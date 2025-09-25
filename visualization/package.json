@@ -1,0 +1,27 @@
+{
+  "name": "logosq-benchmark-visualization",
+  "version": "1.0.0",
+  "description": "D3.js visualization dashboard for LogosQ benchmarks",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "d3": "^7.9.0",
+    "express": "^4.18.2",
+    "path": "^0.12.7"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": [
+    "quantum",
+    "benchmark",
+    "d3js",
+    "visualization"
+  ],
+  "author": "LogosQ Team",
+  "license": "MIT"
+}

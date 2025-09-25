@@ -1,0 +1,21 @@
+[package]
+name = "logosq_benchmark"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "logosq_benchmark"
+path = "src/main.rs"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+rand = "0.8"
+num-complex = "0.4"
+criterion = "0.5"
+rayon = "1.7"
+nalgebra = "0.32"
+
+[lib]
+name = "logosq"
+path = "src/lib.rs"

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LogosQ Benchmark Dashboard</title>
+    <script src="/d3/d3.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>LogosQ Quantum Computing Benchmark Dashboard</h1>
+            <p>Comparing performance across quantum computing libraries</p>
+        </header>
+
+        <nav class="tabs">
+            <button class="tab-button active" onclick="showTab('performance')">Performance</button>
+            <button class="tab-button" onclick="showTab('memory')">Memory Usage</button>
+            <button class="tab-button" onclick="showTab('scalability')">Scalability</button>
+            <button class="tab-button" onclick="showTab('summary')">Summary</button>
+        </nav>
+
+        <main>
+            <!-- Performance Tab -->
+            <div id="performance" class="tab-content active">
+                <div class="chart-container">
+                    <h2>Execution Time Comparison</h2>
+                    <div class="controls">
+                        <label>
+                            <input type="checkbox" id="logScale" onchange="updatePerformanceChart()">
+                            Logarithmic Scale
+                        </label>
+                        <select id="benchmarkFilter" onchange="updatePerformanceChart()">
+                            <option value="all">All Benchmarks</option>
+                            <option value="GHZ">GHZ States</option>
+                            <option value="Random">Random Circuits</option>
+                            <option value="QFT">QFT Circuits</option>
+                        </select>
+                    </div>
+                    <div id="performanceChart"></div>
+                </div>
+            </div>
+
+            <!-- Memory Tab -->
+            <div id="memory" class="tab-content">
+                <div class="chart-container">
+                    <h2>Memory Usage Analysis</h2>
+                    <div id="memoryChart"></div>
+                </div>
+                <div class="chart-container">
+                    <h2>Memory vs Qubits</h2>
+                    <div id="memoryScalingChart"></div>
+                </div>
+            </div>
+
+            <!-- Scalability Tab -->
+            <div id="scalability" class="tab-content">
+                <div class="chart-container">
+                    <h2>Scalability Analysis</h2>
+                    <div id="scalabilityChart"></div>
+                </div>
+                <div class="chart-container">
+                    <h2>Performance vs Circuit Depth</h2>
+                    <div id="depthChart"></div>
+                </div>
+            </div>
+
+            <!-- Summary Tab -->
+            <div id="summary" class="tab-content">
+                <div class="summary-grid">
+                    <div class="summary-card">
+                        <h3>Library Comparison</h3>
+                        <div id="libraryComparison"></div>
+                    </div>
+                    <div class="summary-card">
+                        <h3>Performance Rankings</h3>
+                        <div id="performanceRanking"></div>
+                    </div>
+                    <div class="summary-card">
+                        <h3>Memory Efficiency</h3>
+                        <div id="memoryEfficiency"></div>
+                    </div>
+                    <div class="summary-card">
+                        <h3>Best Use Cases</h3>
+                        <div id="useCases"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>LogosQ Benchmark Suite - Quantum Computing Performance Analysis</p>
+        </footer>
+    </div>
+
+    <script src="dashboard.js"></script>
+</body>
+</html>
