@@ -15,7 +15,6 @@ num-complex = "0.4"
 criterion = "0.5"
 rayon = "1.7"
 nalgebra = "0.32"
-std-time = "0.1"
 
 [lib]
 name = "logosq"

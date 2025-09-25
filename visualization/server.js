@@ -10,6 +10,7 @@ const PORT = process.env.PORT || 8080;
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/d3', express.static(path.join(__dirname, 'node_modules/d3/dist')));
 
 // Serve static files
 app.get('/', (req, res) => {

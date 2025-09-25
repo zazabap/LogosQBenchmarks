@@ -1,4 +1,4 @@
-use logosq::{QuantumCircuit, QuantumState, Gates};
+use logosq::QuantumCircuit;
 use serde::{Deserialize, Serialize};
 use std::time::Instant;
 use std::f64::consts::PI;
@@ -128,7 +128,7 @@ fn benchmark_qft_circuit(num_qubits: usize) -> BenchmarkResult {
     for i in 0..num_qubits {
         circuit.h(i);
         for j in (i + 1)..num_qubits {
-            let angle = PI / (1 << (j - i));
+            let angle = PI / (1 << (j - i)) as f64;
             circuit.rz(j, angle);
             circuit.cnot(j, i);
             circuit.rz(j, -angle);

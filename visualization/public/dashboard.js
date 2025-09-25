@@ -108,7 +108,7 @@ function updatePerformanceChart() {
     // Prepare data
     const data = [];
     Object.entries(benchmarkData).forEach(([library, results]) => {
-        if (results && results.results) {
+        if (results && results.results && Array.isArray(results.results)) {
             results.results.forEach(result => {
                 if (filter === 'all' || result.name.includes(filter)) {
                     data.push({
@@ -275,7 +275,7 @@ function updateMemoryScalingChart() {
     // Prepare data for memory vs qubits
     const data = [];
     Object.entries(benchmarkData).forEach(([library, results]) => {
-        if (results && results.results) {
+        if (results && results.results && Array.isArray(results.results)) {
             results.results.forEach(result => {
                 data.push({
                     library: library,
@@ -392,7 +392,7 @@ function updateLibraryComparison() {
     }
     
     const summary = Object.entries(benchmarkData).map(([library, results]) => {
-        if (!results || !results.results) return null;
+        if (!results || !results.results || !Array.isArray(results.results)) return null;
         
         const avgTime = results.results.reduce((sum, r) => sum + r.execution_time_ms, 0) / results.results.length;
         const avgMemory = results.results.reduce((sum, r) => sum + r.memory_usage_mb, 0) / results.results.length;

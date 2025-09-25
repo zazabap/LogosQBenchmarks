@@ -1,6 +1,5 @@
 use num_complex::Complex64;
 use nalgebra::{DMatrix, DVector};
-use rayon::prelude::*;
 use std::f64::consts::PI;
 
 /// Quantum state representation

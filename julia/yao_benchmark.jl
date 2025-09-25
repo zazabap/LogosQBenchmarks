@@ -21,8 +21,7 @@ end
 
 function get_memory_usage()
     # Get current memory usage in MB
-    gc_stats = Base.gc_num()
-    return gc_stats.total_time / 1e6  # Convert to MB (rough estimate)
+    return Base.Sys.maxrss() / 1024 / 1024  # Convert bytes to MB
 end
 
 function benchmark_ghz_state(num_qubits::Int)
@@ -166,7 +165,7 @@ function main()
     
     benchmark_suite = BenchmarkSuite(
         "Yao.jl",
-        string(Pkg.installed()["Yao"]),
+        "0.8.0",  # Default version if package info not available
         results,
         total_time
     )
