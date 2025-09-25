@@ -1,7 +1,7 @@
 # Multi-stage Dockerfile for LogosQ Benchmarking System
 FROM ubuntu:22.04 as base
 
-# Install system dependencies
+# Install system dependencies (excluding julia)
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     curl \
     wget \
@@ -11,7 +11,6 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     python3 \
     python3-pip \
     python3-venv \
-    julia \
     nodejs \
     npm \
     pkg-config \
@@ -19,7 +18,15 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     htop \
     time \
     valgrind \
+    libeigen3-dev \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Julia manually
+RUN wget https://julialang-s3.julialang.org/bin/linux/x64/1.8/julia-1.8.5-linux-x86_64.tar.gz && \
+    tar -xvzf julia-1.8.5-linux-x86_64.tar.gz && \
+    mv julia-1.8.5 /opt/julia && \
+    ln -s /opt/julia/bin/julia /usr/local/bin/julia && \
+    rm julia-1.8.5-linux-x86_64.tar.gz
 
 # Install Rust
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
