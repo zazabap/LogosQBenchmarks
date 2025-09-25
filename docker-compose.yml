@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  benchmark:
+    build: .
+    container_name: logosq-benchmark
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./results:/app/results
+      - ./logs:/app/logs
+    environment:
+      - RUST_LOG=info
+    command: >
+      sh -c "
+        echo 'Starting LogosQ Benchmark Suite...' &&
+        ./run_benchmarks.sh &&
+        echo 'Starting visualization server...' &&
+        cd visualization &&
+        npm start
+      "
