@@ -15,6 +15,7 @@ num-complex = "0.4"
 criterion = "0.5"
 rayon = "1.7"
 nalgebra = "0.32"
+logosq = "0.1.4"
 
 [lib]
 name = "logosq"
