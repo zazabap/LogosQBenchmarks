@@ -1,4 +1,5 @@
-use logosq::QuantumCircuit;
+use logosq::circuits::Circuit;
+use logosq::State;
 use serde::{Deserialize, Serialize};
 use std::time::Instant;
 use std::f64::consts::PI;
@@ -25,7 +26,7 @@ struct BenchmarkSuite {
 fn get_memory_usage() -> f64 {
     // Simple memory estimation - in a real implementation you'd use more sophisticated monitoring
     std::process::Command::new("ps")
-        .args(&["-o", "rss=", "-p", &std::process::id().to_string()])
+        .args(["-o", "rss=", "-p", &std::process::id().to_string()])
         .output()
         .ok()
         .and_then(|output| {
@@ -44,7 +45,8 @@ fn benchmark_ghz_state(num_qubits: usize) -> BenchmarkResult {
     let start_time = Instant::now();
     
     // Create GHZ state: |000...0⟩ + |111...1⟩
-    let mut circuit = QuantumCircuit::new(num_qubits);
+    let mut circuit = Circuit::new(num_qubits);
+    let mut state = State::zero_state(num_qubits);
     
     // Apply Hadamard to first qubit
     circuit.h(0);
@@ -54,7 +56,7 @@ fn benchmark_ghz_state(num_qubits: usize) -> BenchmarkResult {
         circuit.cnot(0, i);
     }
     
-    let _final_state = circuit.execute();
+    circuit.execute(&mut state);
     
     let execution_time = start_time.elapsed();
     let end_memory = get_memory_usage();
@@ -73,7 +75,8 @@ fn benchmark_random_circuit(num_qubits: usize, num_gates: usize) -> BenchmarkRes
     let start_memory = get_memory_usage();
     let start_time = Instant::now();
     
-    let mut circuit = QuantumCircuit::new(num_qubits);
+    let mut circuit = Circuit::new(num_qubits);
+    let mut state = State::zero_state(num_qubits);
     let mut rng = rand::thread_rng();
     
     for _ in 0..num_gates {
@@ -103,7 +106,7 @@ fn benchmark_random_circuit(num_qubits: usize, num_gates: usize) -> BenchmarkRes
         circuit.cnot(control, target);
     }
     
-    let _final_state = circuit.execute();
+    circuit.execute(&mut state);
     
     let execution_time = start_time.elapsed();
     let end_memory = get_memory_usage();
@@ -122,7 +125,8 @@ fn benchmark_qft_circuit(num_qubits: usize) -> BenchmarkResult {
     let start_memory = get_memory_usage();
     let start_time = Instant::now();
     
-    let mut circuit = QuantumCircuit::new(num_qubits);
+    let mut circuit = Circuit::new(num_qubits);
+    let mut state = State::zero_state(num_qubits);
     
     // Implement simplified QFT
     for i in 0..num_qubits {
@@ -136,7 +140,7 @@ fn benchmark_qft_circuit(num_qubits: usize) -> BenchmarkResult {
         }
     }
     
-    let _final_state = circuit.execute();
+    circuit.execute(&mut state);
     
     let execution_time = start_time.elapsed();
     let end_memory = get_memory_usage();

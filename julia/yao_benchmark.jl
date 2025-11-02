@@ -28,7 +28,7 @@ function benchmark_ghz_state(num_qubits::Int)
     start_memory = get_memory_usage()
     
     # Create GHZ state circuit
-    circuit = chain(num_qubits, put(1=>H), [control(1, i=>X) for i in 2:num_qubits]...)
+    circuit = chain(num_qubits, put(1=>H), [control(i, 1=>X) for i in 2:num_qubits]...)
     
     # Benchmark execution
     result = @benchmark apply!(zero_state($num_qubits), $circuit)
@@ -79,7 +79,7 @@ function benchmark_random_circuit(num_qubits::Int, num_gates::Int)
         while target == control
             target = rand(1:num_qubits)
         end
-        push!(gates, control(control, target=>X))
+        push!(gates, control(target, control=>X))
     end
     
     circuit = chain(num_qubits, gates...)
@@ -99,11 +99,34 @@ function benchmark_random_circuit(num_qubits::Int, num_gates::Int)
     )
 end
 
+# Try to use built-in QFT if available, otherwise use custom implementation
+function get_qft_circuit(n::Int)
+    # First try to use built-in QFT if available
+    try
+        return qft(n)
+    catch
+        # Fall back to custom implementation
+        return custom_qft_circuit(n)
+    end
+end
+
+function custom_qft_circuit(n::Int)
+    circuit = chain(n)
+    for i in 1:n
+        push!(circuit, put(i=>H))
+        for j in (i+1):n
+            angle = π / (2^(j-i))
+            push!(circuit, control(j, i=>shift(angle)))
+        end
+    end
+    return circuit
+end
+
 function benchmark_qft_circuit(num_qubits::Int)
     start_memory = get_memory_usage()
     
-    # Create QFT circuit
-    circuit = qft_circuit(num_qubits)
+    # Create QFT circuit (try built-in first, fall back to custom)
+    circuit = get_qft_circuit(num_qubits)
     
     # Benchmark execution
     result = @benchmark apply!(zero_state($num_qubits), $circuit)
@@ -122,29 +145,27 @@ function benchmark_qft_circuit(num_qubits::Int)
     )
 end
 
-function qft_circuit(n::Int)
-    circuit = chain(n)
-    for i in 1:n
-        push!(circuit, put(i=>H))
-        for j in (i+1):n
-            angle = π / (2^(j-i))
-            push!(circuit, control([j], i=>shift(angle)))
-        end
-    end
-    return circuit
-end
-
 function main()
     suite_start = time()
     results = BenchmarkResult[]
     
-    @info "Starting Yao.jl benchmarks..."
+    # Get actual Yao version
+    deps = Pkg.dependencies()
+    yao_version = "latest"
+    for (uuid, dep) in deps
+        if dep.name == "Yao" && dep.version !== nothing
+            yao_version = string(dep.version)
+            break
+        end
+    end
+    
+    @info "Starting Yao.jl v$yao_version benchmarks..."
     
     # Test different qubit sizes
-    qubit_sizes = [4, 6, 8, 10, 12]
+    qubit_sizes = [4, 6, 8, 10, 12, 16]
     
     for num_qubits in qubit_sizes
-        if num_qubits <= 14  # Limit for exponential memory growth
+        if num_qubits <= 20  # Increased limit for more powerful systems
             @info "Benchmarking $num_qubits qubits..."
             
             # GHZ state benchmark
@@ -155,7 +176,7 @@ function main()
             push!(results, benchmark_random_circuit(num_qubits, gate_count))
             
             # QFT benchmark (only for smaller systems)
-            if num_qubits <= 10
+            if num_qubits <= 14
                 push!(results, benchmark_qft_circuit(num_qubits))
             end
         end
@@ -165,7 +186,7 @@ function main()
     
     benchmark_suite = BenchmarkSuite(
         "Yao.jl",
-        "0.8.0",  # Default version if package info not available
+        yao_version,
         results,
         total_time
     )
@@ -190,9 +211,18 @@ function main()
         "total_time_ms" => benchmark_suite.total_time_ms
     )
     
+    output_file = joinpath(dirname(@__FILE__), "yao_benchmark_results.json")
+    open(output_file, "w") do f
+        write(f, JSON.json(json_output, 2))
+    end
+    
     println(JSON.json(json_output, 2))
     @info "Yao.jl benchmarks completed in $(total_time)ms"
+    @info "Results saved to $output_file"
 end
+
+# Add proper Pkg import for version check
+using Pkg
 
 if abspath(PROGRAM_FILE) == @__FILE__
     main()

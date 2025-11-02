@@ -55,6 +55,21 @@ run_benchmark() {
 
 echo "Starting benchmarks..."
 
+# Run PennyLane benchmarks
+if [ -f "python/pennylane_benchmark.py" ]; then
+    run_benchmark "PennyLane" "cd python && python3 pennylane_benchmark.py > ../results/pennylane_results.json"
+else
+    echo "PennyLane benchmark not found, skipping..."
+fi
+
+# Run Qiskit benchmarks
+if [ -f "python/qiskit_benchmark.py" ]; then
+    run_benchmark "Qiskit" "cd python && python3 qiskit_benchmark.py > ../results/qiskit_results.json"
+else
+    echo "Qiskit benchmark not found, skipping..."
+fi
+
+
 # Run LogosQ (Rust) benchmarks
 if [ -f "rust/target/release/logosq_benchmark" ]; then
     run_benchmark "LogosQ-Rust" "cd rust && ./target/release/logosq_benchmark > ../results/logosq_results.json"
@@ -74,20 +89,6 @@ if [ -f "cpp/build/cpp_benchmark" ]; then
     run_benchmark "C++" "cd cpp/build && ./cpp_benchmark > ../../results/cpp_results.json"
 else
     echo "C++ benchmark not found, skipping..."
-fi
-
-# Run PennyLane benchmarks
-if [ -f "python/pennylane_benchmark.py" ]; then
-    run_benchmark "PennyLane" "cd python && python3 pennylane_benchmark.py > ../results/pennylane_results.json"
-else
-    echo "PennyLane benchmark not found, skipping..."
-fi
-
-# Run Qiskit benchmarks
-if [ -f "python/qiskit_benchmark.py" ]; then
-    run_benchmark "Qiskit" "cd python && python3 qiskit_benchmark.py > ../results/qiskit_results.json"
-else
-    echo "Qiskit benchmark not found, skipping..."
 fi
 
 echo "All benchmarks completed!"

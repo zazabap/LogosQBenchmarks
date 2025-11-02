@@ -63,7 +63,7 @@ class QFTBenchmark:
         _ = qft_circuit()
         
         # Get actual gate counts from the circuit
-        tape = qft_circuit.tape
+        tape = qft_circuit._tape
         actual_gate_counts = {}
         for op in tape.operations:
             gate_name = op.name
@@ -135,7 +135,7 @@ class QFTBenchmark:
         _ = qft_inverse_circuit()
         
         # Get gate counts
-        tape = qft_inverse_circuit.tape
+        tape = qft_inverse_circuit._tape
         gate_counts = {}
         for op in tape.operations:
             gate_name = op.name
