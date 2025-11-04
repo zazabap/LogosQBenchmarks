@@ -204,7 +204,19 @@ def main():
         total_time_ms=total_time
     )
     
-    print(json.dumps(benchmark_suite.to_dict(), indent=2))
+    # Output to both stdout and file
+    output_json = json.dumps(benchmark_suite.to_dict(), indent=2)
+    print(output_json)
+    
+    # Also save to file for plotting
+    output_file = "/app/python/qiskit_qft_benchmark_results.json"
+    try:
+        with open(output_file, 'w') as f:
+            f.write(output_json)
+        print(f"Results also saved to: {output_file}", file=sys.stderr)
+    except Exception as e:
+        print(f"Warning: Could not save to file: {e}", file=sys.stderr)
+    
     print(f"Qiskit benchmarks completed in {total_time:.2f}ms", file=sys.stderr)
 
 if __name__ == "__main__":

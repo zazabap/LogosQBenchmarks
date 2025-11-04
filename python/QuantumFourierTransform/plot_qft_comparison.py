@@ -1,0 +1,454 @@
+"""
+Plot comparison between LogosQ (Rust), PennyLane (Python), and Qiskit (Python) QFT benchmarks.
+Generates plots for execution time and memory usage comparing all available libraries.
+"""
+
+import json
+import matplotlib.pyplot as plt
+import numpy as np
+from pathlib import Path
+from typing import Dict, List, Tuple, Optional
+from collections import defaultdict
+
+# Set style for better-looking plots
+try:
+    plt.style.use('seaborn-v0_8-darkgrid')
+except:
+    try:
+        plt.style.use('seaborn-darkgrid')
+    except:
+        plt.style.use('ggplot')
+fig_size = (14, 6)
+
+# Library configuration
+LIBRARIES = {
+    'logosq': {
+        'name': 'LogosQ (Rust)',
+        'color': '#2E86AB',
+        'marker': 'o',
+        'file': '/app/rust/qft_benchmark_results.json'
+    },
+    'pennylane': {
+        'name': 'PennyLane (Python)',
+        'color': '#A23B72',
+        'marker': 's',
+        'file': '/app/python/qft_benchmark_results.json'
+    },
+    'qiskit': {
+        'name': 'Qiskit (Python)',
+        'color': '#F18F01',
+        'marker': '^',
+        'file': '/app/python/qiskit_qft_benchmark_results.json'
+    }
+}
+
+def load_logosq_results(filepath: str) -> List[Dict]:
+    """Load LogosQ (Rust) benchmark results"""
+    try:
+        with open(filepath, 'r') as f:
+            data = json.load(f)
+            # Rust results are already a list of BenchmarkResult
+            return data if isinstance(data, list) else data.get('results', [])
+    except FileNotFoundError:
+        return []
+    except json.JSONDecodeError as e:
+        print(f"Error parsing LogosQ results: {e}")
+        return []
+
+def load_pennylane_results(filepath: str) -> List[Dict]:
+    """Load PennyLane (Python) benchmark results"""
+    try:
+        with open(filepath, 'r') as f:
+            data = json.load(f)
+            # PennyLane results are nested in results array with qft_only entries
+            if isinstance(data, dict) and 'results' in data:
+                # Extract qft_only results
+                results = []
+                for entry in data['results']:
+                    if 'qft_only' in entry:
+                        results.append(entry['qft_only'])
+                return results
+            return []
+    except FileNotFoundError:
+        return []
+    except json.JSONDecodeError as e:
+        print(f"Error parsing PennyLane results: {e}")
+        return []
+
+def load_qiskit_results(filepath: str) -> List[Dict]:
+    """Load Qiskit (Python) benchmark results"""
+    try:
+        with open(filepath, 'r') as f:
+            data = json.load(f)
+            # Qiskit results format: {"library": "Qiskit", "results": [...]}
+            if isinstance(data, dict) and 'results' in data:
+                # Filter for QFT results only
+                results = []
+                for entry in data['results']:
+                    if entry.get('name', '').startswith('QFT-'):
+                        results.append(entry)
+                return results
+            return []
+    except FileNotFoundError:
+        return []
+    except json.JSONDecodeError as e:
+        print(f"Error parsing Qiskit results: {e}")
+        return []
+
+def extract_data(results: List[Dict], source: str) -> Tuple[List[int], List[float], List[float], List[float]]:
+    """
+    Extract qubit counts, execution times, time std dev, and memory usage.
+    
+    Returns:
+        (qubits, times, time_stds, memory)
+    """
+    qubits = []
+    times = []
+    time_stds = []
+    memory = []
+    
+    for result in results:
+        if source == 'logosq':
+            # Rust format
+            qubits.append(result['n_qubits'])
+            times.append(result['execution_time_ms'])
+            time_stds.append(result.get('std_deviation_ms', 0.0))
+            memory.append(result.get('memory_mb', 0.0))
+        elif source == 'pennylane':
+            # PennyLane format
+            qubits.append(result['n_qubits'])
+            time_data = result.get('execution_time_ms', {})
+            if isinstance(time_data, dict):
+                times.append(time_data.get('mean', 0.0))
+                time_stds.append(time_data.get('std', 0.0))
+            else:
+                times.append(time_data)
+                time_stds.append(0.0)
+            
+            mem_data = result.get('memory_usage_mb', {})
+            if isinstance(mem_data, dict):
+                memory.append(mem_data.get('delta_mean', 0.0))
+            else:
+                memory.append(mem_data)
+        elif source == 'qiskit':
+            # Qiskit format: {name, num_qubits, execution_time_ms, memory_usage_mb, ...}
+            qubits.append(result['num_qubits'])
+            times.append(result.get('execution_time_ms', 0.0))
+            time_stds.append(0.0)  # Qiskit doesn't provide std dev in current format
+            memory.append(result.get('memory_usage_mb', 0.0))
+    
+    return qubits, times, time_stds, memory
+
+def plot_execution_time_comparison(
+    datasets: Dict[str, Tuple[List[int], List[float], List[float]]],
+    output_path: str
+):
+    """Plot execution time comparison for multiple libraries"""
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=fig_size)
+    
+    # Plot 1: Linear scale
+    for lib_id, (qubits, times, stds) in datasets.items():
+        if qubits and times:
+            config = LIBRARIES[lib_id]
+            ax1.errorbar(
+                qubits, times,
+                yerr=stds if any(stds) else None,
+                label=config['name'],
+                marker=config['marker'],
+                markersize=8,
+                linewidth=2,
+                capsize=5,
+                color=config['color'],
+                alpha=0.8
+            )
+    
+    ax1.set_xlabel('Number of Qubits', fontsize=12, fontweight='bold')
+    ax1.set_ylabel('Execution Time (ms)', fontsize=12, fontweight='bold')
+    ax1.set_title('QFT Execution Time Comparison (Linear Scale)', fontsize=14, fontweight='bold')
+    ax1.legend(fontsize=10, loc='best')
+    ax1.grid(True, alpha=0.3)
+    
+    # Plot 2: Log scale
+    for lib_id, (qubits, times, stds) in datasets.items():
+        if qubits and times:
+            config = LIBRARIES[lib_id]
+            ax2.errorbar(
+                qubits, times,
+                yerr=stds if any(stds) else None,
+                label=config['name'],
+                marker=config['marker'],
+                markersize=8,
+                linewidth=2,
+                capsize=5,
+                color=config['color'],
+                alpha=0.8
+            )
+    
+    ax2.set_xlabel('Number of Qubits', fontsize=12, fontweight='bold')
+    ax2.set_ylabel('Execution Time (ms, log scale)', fontsize=12, fontweight='bold')
+    ax2.set_title('QFT Execution Time Comparison (Log Scale)', fontsize=14, fontweight='bold')
+    ax2.set_yscale('log')
+    ax2.legend(fontsize=10, loc='best')
+    ax2.grid(True, alpha=0.3, which='both')
+    
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    print(f"✓ Saved execution time plot to: {output_path}")
+
+def plot_memory_comparison(
+    datasets: Dict[str, Tuple[List[int], List[float]]],
+    output_path: str
+):
+    """Plot memory usage comparison for multiple libraries"""
+    fig, ax = plt.subplots(1, 1, figsize=(10, 6))
+    
+    for lib_id, (qubits, memory) in datasets.items():
+        if qubits and memory:
+            config = LIBRARIES[lib_id]
+            ax.plot(
+                qubits, memory,
+                label=config['name'],
+                marker=config['marker'],
+                markersize=8,
+                linewidth=2,
+                color=config['color'],
+                alpha=0.8
+            )
+    
+    ax.set_xlabel('Number of Qubits', fontsize=12, fontweight='bold')
+    ax.set_ylabel('Memory Usage (MB)', fontsize=12, fontweight='bold')
+    ax.set_title('QFT Memory Usage Comparison', fontsize=14, fontweight='bold')
+    ax.legend(fontsize=10, loc='best')
+    ax.grid(True, alpha=0.3)
+    
+    # Use log scale if memory values span large range
+    all_memory = []
+    for _, (_, memory) in datasets.items():
+        if memory:
+            all_memory.extend([m for m in memory if m > 0])
+    
+    if all_memory and max(all_memory) / min([m for m in all_memory if m > 0]) > 100:
+        ax.set_yscale('log')
+    
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    print(f"✓ Saved memory usage plot to: {output_path}")
+
+def plot_speedup_comparison(
+    datasets: Dict[str, Tuple[List[int], List[float]]],
+    baseline_lib: str,
+    output_path: str
+):
+    """Plot speedup ratio compared to a baseline library"""
+    if baseline_lib not in datasets:
+        print(f"⚠ Baseline library '{baseline_lib}' not found, skipping speedup plot")
+        return
+    
+    baseline_qubits, baseline_times = datasets[baseline_lib]
+    if not baseline_qubits or not baseline_times:
+        print(f"⚠ No data for baseline library '{baseline_lib}', skipping speedup plot")
+        return
+    
+    # Create a dictionary for quick lookup
+    baseline_dict = dict(zip(baseline_qubits, baseline_times))
+    
+    fig, ax = plt.subplots(1, 1, figsize=(10, 6))
+    
+    baseline_name = LIBRARIES[baseline_lib]['name']
+    
+    for lib_id, (qubits, times) in datasets.items():
+        if lib_id == baseline_lib:
+            continue
+        
+        if not qubits or not times:
+            continue
+        
+        # Find common qubit counts
+        speedup_qubits = []
+        speedups = []
+        
+        for q, t in zip(qubits, times):
+            if q in baseline_dict and baseline_dict[q] > 0:
+                speedup = t / baseline_dict[q]  # Ratio: other_lib_time / baseline_time
+                speedups.append(speedup)
+                speedup_qubits.append(q)
+        
+        if speedups:
+            config = LIBRARIES[lib_id]
+            ax.plot(
+                speedup_qubits, speedups,
+                marker=config['marker'],
+                markersize=10,
+                linewidth=2.5,
+                color=config['color'],
+                alpha=0.8,
+                label=f"{config['name']} vs {baseline_name}"
+            )
+            
+            # Add annotations for significant differences
+            for q, s in zip(speedup_qubits, speedups):
+                if s > 2.0 or s < 0.5:  # Highlight significant differences
+                    ax.annotate(
+                        f'{s:.2f}x',
+                        (q, s),
+                        xytext=(5, 5),
+                        textcoords='offset points',
+                        fontsize=8,
+                        bbox=dict(boxstyle='round,pad=0.3', facecolor='yellow', alpha=0.5)
+                    )
+    
+    # Add reference line at 1x
+    ax.axhline(y=1.0, color='r', linestyle='--', linewidth=1.5, alpha=0.5, 
+               label=f'{baseline_name} (baseline = 1x)')
+    
+    ax.set_xlabel('Number of Qubits', fontsize=12, fontweight='bold')
+    ax.set_ylabel(f'Speedup Ratio (vs {baseline_name})', fontsize=12, fontweight='bold')
+    ax.set_title(f'QFT Performance Speedup Comparison\n(Ratio > 1 means {baseline_name} is faster)', 
+                 fontsize=14, fontweight='bold')
+    ax.legend(fontsize=9, loc='best')
+    ax.grid(True, alpha=0.3)
+    
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    print(f"✓ Saved speedup comparison plot to: {output_path}")
+
+def main():
+    """Main function to generate all comparison plots"""
+    print("=" * 70)
+    print("QFT Benchmark Comparison: LogosQ vs PennyLane vs Qiskit")
+    print("=" * 70)
+    
+    # Output directory
+    output_dir = Path("/app/python/QuantumFourierTransform")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Load results from all libraries
+    print("\n📂 Loading benchmark results...")
+    
+    all_results = {}
+    loaders = {
+        'logosq': load_logosq_results,
+        'pennylane': load_pennylane_results,
+        'qiskit': load_qiskit_results
+    }
+    
+    for lib_id, loader in loaders.items():
+        filepath = LIBRARIES[lib_id]['file']
+        results = loader(filepath)
+        all_results[lib_id] = results
+        print(f"  {LIBRARIES[lib_id]['name']}: {len(results)} data points")
+    
+    # Check if we have any results
+    if not any(all_results.values()):
+        print("❌ No benchmark results found! Please run benchmarks first.")
+        return
+    
+    # Extract data for plotting
+    time_datasets = {}
+    memory_datasets = {}
+    
+    for lib_id, results in all_results.items():
+        if results:
+            qubits, times, stds, memory = extract_data(results, lib_id)
+            if qubits and times:
+                time_datasets[lib_id] = (qubits, times, stds)
+            if qubits and memory:
+                memory_datasets[lib_id] = (qubits, memory)
+    
+    if not time_datasets:
+        print("❌ No valid timing data found!")
+        return
+    
+    # Generate plots
+    print("\n📊 Generating comparison plots...")
+    
+    # Execution time comparison
+    if time_datasets:
+        plot_execution_time_comparison(
+            time_datasets,
+            str(output_dir / "qft_execution_time_comparison.png")
+        )
+    
+    # Memory usage comparison
+    if memory_datasets:
+        plot_memory_comparison(
+            memory_datasets,
+            str(output_dir / "qft_memory_comparison.png")
+        )
+    
+    # Speedup comparison (using LogosQ as baseline)
+    if time_datasets and 'logosq' in time_datasets:
+        plot_speedup_comparison(
+            {k: (q, t) for k, (q, t, _) in time_datasets.items()},
+            'logosq',
+            str(output_dir / "qft_speedup_comparison.png")
+        )
+    
+    print("\n✅ All plots generated successfully!")
+    print(f"📁 Output directory: {output_dir}")
+    
+    # Print summary statistics
+    print("\n📊 Summary Statistics:")
+    print("-" * 70)
+    
+    for lib_id, results in all_results.items():
+        if results:
+            qubits, times, _, memory = extract_data(results, lib_id)
+            if qubits and times:
+                print(f"\n{LIBRARIES[lib_id]['name']}:")
+                print(f"  Qubit range: {min(qubits)} - {max(qubits)}")
+                print(f"  Time range: {min(times):.3f} - {max(times):.3f} ms")
+                if memory:
+                    mem_values = [m for m in memory if m > 0]
+                    if mem_values:
+                        print(f"  Memory range: {min(mem_values):.2f} - {max(mem_values):.2f} MB")
+    
+    # Compare common qubit counts
+    if len(time_datasets) > 1:
+        print("\n🔍 Comparison at common qubit counts:")
+        print("-" * 70)
+        
+        # Find common qubit counts
+        all_common_qubits = None
+        for lib_id, (qubits, _, _) in time_datasets.items():
+            if all_common_qubits is None:
+                all_common_qubits = set(qubits)
+            else:
+                all_common_qubits &= set(qubits)
+        
+        if all_common_qubits:
+            common_qubits = sorted(all_common_qubits)
+            print(f"{'Qubits':<8}", end="")
+            for lib_id in time_datasets.keys():
+                print(f"{LIBRARIES[lib_id]['name']:<25}", end="")
+            print()
+            print("-" * 70)
+            
+            for q in common_qubits[:5]:  # Show first 5 common qubits
+                print(f"{q:<8}", end="")
+                baseline_time = None
+                for lib_id in time_datasets.keys():
+                    qubits, times, _ = time_datasets[lib_id]
+                    idx = qubits.index(q)
+                    time_val = times[idx]
+                    if lib_id == 'logosq':
+                        baseline_time = time_val
+                    print(f"{time_val:>12.3f} ms  ", end="")
+                if baseline_time and len(time_datasets) > 1:
+                    # Show relative speedup
+                    speedups = []
+                    for lib_id in time_datasets.keys():
+                        if lib_id != 'logosq':
+                            qubits, times, _ = time_datasets[lib_id]
+                            if q in qubits:
+                                idx = qubits.index(q)
+                                speedup = times[idx] / baseline_time if baseline_time > 0 else 0
+                                speedups.append(f"{speedup:.2f}x")
+                    if speedups:
+                        print(f" (speedup: {', '.join(speedups)})", end="")
+                print()
+        else:
+            print("  No common qubit counts found across all libraries")
+
+if __name__ == "__main__":
+    main()

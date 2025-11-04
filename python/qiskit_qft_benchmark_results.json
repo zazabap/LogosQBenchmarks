@@ -1,0 +1,119 @@
+{
+  "library": "Qiskit",
+  "version": "2.2.0",
+  "results": [
+    {
+      "name": "GHZ-4",
+      "num_qubits": 4,
+      "num_gates": 4,
+      "execution_time_ms": 2.2199153900146484,
+      "memory_usage_mb": 0.765625,
+      "circuit_depth": 2
+    },
+    {
+      "name": "Random-4-40",
+      "num_qubits": 4,
+      "num_gates": 50,
+      "execution_time_ms": 3.4351348876953125,
+      "memory_usage_mb": 0.0,
+      "circuit_depth": 20
+    },
+    {
+      "name": "QFT-4",
+      "num_qubits": 4,
+      "num_gates": 16,
+      "execution_time_ms": 3.2553672790527344,
+      "memory_usage_mb": 0.125,
+      "circuit_depth": 1
+    },
+    {
+      "name": "GHZ-6",
+      "num_qubits": 6,
+      "num_gates": 6,
+      "execution_time_ms": 0.8347034454345703,
+      "memory_usage_mb": 0.0,
+      "circuit_depth": 2
+    },
+    {
+      "name": "Random-6-60",
+      "num_qubits": 6,
+      "num_gates": 75,
+      "execution_time_ms": 5.370378494262695,
+      "memory_usage_mb": 0.125,
+      "circuit_depth": 25
+    },
+    {
+      "name": "QFT-6",
+      "num_qubits": 6,
+      "num_gates": 36,
+      "execution_time_ms": 3.1960010528564453,
+      "memory_usage_mb": 0.0,
+      "circuit_depth": 1
+    },
+    {
+      "name": "GHZ-8",
+      "num_qubits": 8,
+      "num_gates": 8,
+      "execution_time_ms": 0.7874965667724609,
+      "memory_usage_mb": 0.125,
+      "circuit_depth": 2
+    },
+    {
+      "name": "Random-8-80",
+      "num_qubits": 8,
+      "num_gates": 100,
+      "execution_time_ms": 7.291555404663086,
+      "memory_usage_mb": 0.0,
+      "circuit_depth": 26
+    },
+    {
+      "name": "QFT-8",
+      "num_qubits": 8,
+      "num_gates": 64,
+      "execution_time_ms": 5.2814483642578125,
+      "memory_usage_mb": 0.0,
+      "circuit_depth": 1
+    },
+    {
+      "name": "GHZ-10",
+      "num_qubits": 10,
+      "num_gates": 10,
+      "execution_time_ms": 1.0280609130859375,
+      "memory_usage_mb": 0.125,
+      "circuit_depth": 2
+    },
+    {
+      "name": "Random-10-100",
+      "num_qubits": 10,
+      "num_gates": 125,
+      "execution_time_ms": 9.850740432739258,
+      "memory_usage_mb": 0.0,
+      "circuit_depth": 24
+    },
+    {
+      "name": "QFT-10",
+      "num_qubits": 10,
+      "num_gates": 100,
+      "execution_time_ms": 7.548093795776367,
+      "memory_usage_mb": 0.0,
+      "circuit_depth": 1
+    },
+    {
+      "name": "GHZ-12",
+      "num_qubits": 12,
+      "num_gates": 12,
+      "execution_time_ms": 1.7271041870117188,
+      "memory_usage_mb": 0.25,
+      "circuit_depth": 2
+    },
+    {
+      "name": "Random-12-120",
+      "num_qubits": 12,
+      "num_gates": 150,
+      "execution_time_ms": 15.068292617797852,
+      "memory_usage_mb": 0.0,
+      "circuit_depth": 24
+    }
+  ],
+  "total_time_ms": 72.97372817993164
+}

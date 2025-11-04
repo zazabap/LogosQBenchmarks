@@ -1,0 +1,444 @@
+{
+  "benchmark_info": {
+    "timestamp": 1762144268.9368992,
+    "system_info": {
+      "cpu_count": 8,
+      "memory_gb": 15.28,
+      "python_version": "3.10.12",
+      "pennylane_version": "0.42.3"
+    },
+    "total_tests": 8
+  },
+  "results": [
+    {
+      "qft_only": {
+        "n_qubits": 1,
+        "execution_time_ms": {
+          "mean": 0.7696907996432856,
+          "std": 0.01654007671791024,
+          "min": 0.7541810009570327,
+          "max": 0.8010940000531264,
+          "median": 0.7668969992664643
+        },
+        "memory_usage_mb": {
+          "before_mean": 125.171875,
+          "after_mean": 125.171875,
+          "delta_mean": 0.0
+        },
+        "gate_counts": {
+          "theoretical": {
+            "Hadamard": 1,
+            "CRZ": 0,
+            "SWAP": 0,
+            "total": 1
+          },
+          "actual": {
+            "PauliX": 1,
+            "Hadamard": 1
+          },
+          "total_actual": 2
+        },
+        "circuit_depth": 2,
+        "state_vector_size": 2,
+        "num_trials": 5
+      },
+      "qft_inverse": {
+        "n_qubits": 1,
+        "execution_time_ms": {
+          "mean": 0.8999900004710071,
+          "std": 0.07019098299897565,
+          "min": 0.8365190005861223,
+          "max": 1.035875000525266
+        },
+        "fidelity": {
+          "mean": 0.9999999999999997,
+          "std": 1.1102230246251565e-16,
+          "min": 0.9999999999999996
+        },
+        "total_gates": 3,
+        "circuit_depth": 3
+      },
+      "timestamp": 1762144268.285592
+    },
+    {
+      "qft_only": {
+        "n_qubits": 2,
+        "execution_time_ms": {
+          "mean": 1.6165689994522836,
+          "std": 0.11393628461043698,
+          "min": 1.4393739984370768,
+          "max": 1.7795569983718451,
+          "median": 1.6077639993454795
+        },
+        "memory_usage_mb": {
+          "before_mean": 125.91015625,
+          "after_mean": 125.91015625,
+          "delta_mean": 0.0
+        },
+        "gate_counts": {
+          "theoretical": {
+            "Hadamard": 2,
+            "CRZ": 1,
+            "SWAP": 1,
+            "total": 4
+          },
+          "actual": {
+            "PauliX": 1,
+            "Hadamard": 2,
+            "CRZ": 1,
+            "SWAP": 1
+          },
+          "total_actual": 5
+        },
+        "circuit_depth": 5,
+        "state_vector_size": 4,
+        "num_trials": 5
+      },
+      "qft_inverse": {
+        "n_qubits": 2,
+        "execution_time_ms": {
+          "mean": 2.3593293997691944,
+          "std": 0.24335647073921698,
+          "min": 2.0858620009676088,
+          "max": 2.76551899878541
+        },
+        "fidelity": {
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0
+        },
+        "total_gates": 9,
+        "circuit_depth": 9
+      },
+      "timestamp": 1762144268.3132098
+    },
+    {
+      "qft_only": {
+        "n_qubits": 3,
+        "execution_time_ms": {
+          "mean": 2.6280139994923957,
+          "std": 0.17130788878535852,
+          "min": 2.4617519993626047,
+          "max": 2.918956997746136,
+          "median": 2.552608999394579
+        },
+        "memory_usage_mb": {
+          "before_mean": 125.91015625,
+          "after_mean": 125.91015625,
+          "delta_mean": 0.0
+        },
+        "gate_counts": {
+          "theoretical": {
+            "Hadamard": 3,
+            "CRZ": 3,
+            "SWAP": 1,
+            "total": 7
+          },
+          "actual": {
+            "PauliX": 1,
+            "Hadamard": 3,
+            "CRZ": 3,
+            "SWAP": 1
+          },
+          "total_actual": 8
+        },
+        "circuit_depth": 8,
+        "state_vector_size": 8,
+        "num_trials": 5
+      },
+      "qft_inverse": {
+        "n_qubits": 3,
+        "execution_time_ms": {
+          "mean": 4.931607800972415,
+          "std": 0.625363747595818,
+          "min": 3.698059001180809,
+          "max": 5.413655002485029
+        },
+        "fidelity": {
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0
+        },
+        "total_gates": 15,
+        "circuit_depth": 15
+      },
+      "timestamp": 1762144268.360567
+    },
+    {
+      "qft_only": {
+        "n_qubits": 4,
+        "execution_time_ms": {
+          "mean": 4.436310000164667,
+          "std": 0.5356081379854054,
+          "min": 3.4951879970321897,
+          "max": 5.019305001042085,
+          "median": 4.689179997512838
+        },
+        "memory_usage_mb": {
+          "before_mean": 126.03515625,
+          "after_mean": 126.03515625,
+          "delta_mean": 0.0
+        },
+        "gate_counts": {
+          "theoretical": {
+            "Hadamard": 4,
+            "CRZ": 6,
+            "SWAP": 2,
+            "total": 12
+          },
+          "actual": {
+            "PauliX": 1,
+            "Hadamard": 4,
+            "CRZ": 6,
+            "SWAP": 2
+          },
+          "total_actual": 13
+        },
+        "circuit_depth": 13,
+        "state_vector_size": 16,
+        "num_trials": 5
+      },
+      "qft_inverse": {
+        "n_qubits": 4,
+        "execution_time_ms": {
+          "mean": 6.031076799263246,
+          "std": 0.4736694718074669,
+          "min": 5.321886997990077,
+          "max": 6.8008239977643825
+        },
+        "fidelity": {
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0
+        },
+        "total_gates": 25,
+        "circuit_depth": 25
+      },
+      "timestamp": 1762144268.4277554
+    },
+    {
+      "qft_only": {
+        "n_qubits": 5,
+        "execution_time_ms": {
+          "mean": 4.194271600135835,
+          "std": 0.19591006018819523,
+          "min": 4.018324001663132,
+          "max": 4.563255999528337,
+          "median": 4.113419996429002
+        },
+        "memory_usage_mb": {
+          "before_mean": 126.16015625,
+          "after_mean": 126.16015625,
+          "delta_mean": 0.0
+        },
+        "gate_counts": {
+          "theoretical": {
+            "Hadamard": 5,
+            "CRZ": 10,
+            "SWAP": 2,
+            "total": 17
+          },
+          "actual": {
+            "PauliX": 1,
+            "Hadamard": 5,
+            "CRZ": 10,
+            "SWAP": 2
+          },
+          "total_actual": 18
+        },
+        "circuit_depth": 18,
+        "state_vector_size": 32,
+        "num_trials": 5
+      },
+      "qft_inverse": {
+        "n_qubits": 5,
+        "execution_time_ms": {
+          "mean": 17.553262400178937,
+          "std": 17.476587989202443,
+          "min": 7.8406550019280985,
+          "max": 52.47825699916575
+        },
+        "fidelity": {
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0
+        },
+        "total_gates": 35,
+        "circuit_depth": 35
+      },
+      "timestamp": 1762144268.5507257
+    },
+    {
+      "qft_only": {
+        "n_qubits": 6,
+        "execution_time_ms": {
+          "mean": 5.758178999531083,
+          "std": 0.15607943206674632,
+          "min": 5.483532000653213,
+          "max": 5.96415699692443,
+          "median": 5.781283998658182
+        },
+        "memory_usage_mb": {
+          "before_mean": 126.28515625,
+          "after_mean": 126.28515625,
+          "delta_mean": 0.0
+        },
+        "gate_counts": {
+          "theoretical": {
+            "Hadamard": 6,
+            "CRZ": 15,
+            "SWAP": 3,
+            "total": 24
+          },
+          "actual": {
+            "PauliX": 1,
+            "Hadamard": 6,
+            "CRZ": 15,
+            "SWAP": 3
+          },
+          "total_actual": 25
+        },
+        "circuit_depth": 25,
+        "state_vector_size": 64,
+        "num_trials": 5
+      },
+      "qft_inverse": {
+        "n_qubits": 6,
+        "execution_time_ms": {
+          "mean": 9.969563800405012,
+          "std": 0.4780237745794236,
+          "min": 9.392269999807468,
+          "max": 10.721934999310179
+        },
+        "fidelity": {
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0
+        },
+        "total_gates": 49,
+        "circuit_depth": 49
+      },
+      "timestamp": 1762144268.6472957
+    },
+    {
+      "qft_only": {
+        "n_qubits": 7,
+        "execution_time_ms": {
+          "mean": 7.093728999461746,
+          "std": 0.1606010259857104,
+          "min": 6.905566002387786,
+          "max": 7.340444997680606,
+          "median": 7.014320999587653
+        },
+        "memory_usage_mb": {
+          "before_mean": 126.28515625,
+          "after_mean": 126.28515625,
+          "delta_mean": 0.0
+        },
+        "gate_counts": {
+          "theoretical": {
+            "Hadamard": 7,
+            "CRZ": 21,
+            "SWAP": 3,
+            "total": 31
+          },
+          "actual": {
+            "PauliX": 1,
+            "Hadamard": 7,
+            "CRZ": 21,
+            "SWAP": 3
+          },
+          "total_actual": 32
+        },
+        "circuit_depth": 32,
+        "state_vector_size": 128,
+        "num_trials": 5
+      },
+      "qft_inverse": {
+        "n_qubits": 7,
+        "execution_time_ms": {
+          "mean": 13.084624200564576,
+          "std": 0.44660971016694917,
+          "min": 12.526059002993861,
+          "max": 13.823795998177957
+        },
+        "fidelity": {
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0
+        },
+        "total_gates": 63,
+        "circuit_depth": 63
+      },
+      "timestamp": 1762144268.7711642
+    },
+    {
+      "qft_only": {
+        "n_qubits": 8,
+        "execution_time_ms": {
+          "mean": 9.071444600704126,
+          "std": 0.2817234290546132,
+          "min": 8.76564300051541,
+          "max": 9.45729899831349,
+          "median": 9.027095002238639
+        },
+        "memory_usage_mb": {
+          "before_mean": 126.41015625,
+          "after_mean": 126.41015625,
+          "delta_mean": 0.0
+        },
+        "gate_counts": {
+          "theoretical": {
+            "Hadamard": 8,
+            "CRZ": 28,
+            "SWAP": 4,
+            "total": 40
+          },
+          "actual": {
+            "PauliX": 1,
+            "Hadamard": 8,
+            "CRZ": 28,
+            "SWAP": 4
+          },
+          "total_actual": 41
+        },
+        "circuit_depth": 41,
+        "state_vector_size": 256,
+        "num_trials": 5
+      },
+      "qft_inverse": {
+        "n_qubits": 8,
+        "execution_time_ms": {
+          "mean": 18.04907499899855,
+          "std": 0.7953945302037921,
+          "min": 16.78920499762171,
+          "max": 19.244797000283143
+        },
+        "fidelity": {
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0
+        },
+        "total_gates": 81,
+        "circuit_depth": 81
+      },
+      "timestamp": 1762144268.93682
+    }
+  ],
+  "summary": {
+    "execution_time_scaling": {
+      "min_time_ms": 0.7696907996432856,
+      "max_time_ms": 9.071444600704126,
+      "time_range_factor": 11.785829588853474
+    },
+    "gate_count_scaling": {
+      "min_gates": 2,
+      "max_gates": 41,
+      "gates_range_factor": 20.5
+    },
+    "qubit_range": {
+      "min_qubits": 1,
+      "max_qubits": 8
+    }
+  }
+}

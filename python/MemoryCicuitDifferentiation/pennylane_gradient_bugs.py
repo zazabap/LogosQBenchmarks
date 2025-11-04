@@ -14,9 +14,14 @@ import pennylane as qml
 import numpy as np
 import warnings
 from typing import Tuple, List, Dict
+import matplotlib.pyplot as plt
+import os
 
 # Suppress some PennyLane warnings for cleaner output
 warnings.filterwarnings('ignore', category=UserWarning)
+
+# Create output directory for circuit diagrams
+os.makedirs('circuit_diagrams', exist_ok=True)
 
 class PennyLaneGradientBugDemo:
     """Demonstrates various gradient bugs in PennyLane's parameter-shift rule"""
@@ -73,7 +78,11 @@ class PennyLaneGradientBugDemo:
         print("-" * 70)
         _ = circuit_bad(params)  # Execute once to build circuit
         print("\nCircuit Structure (with invalid generator operations):")
-        print(qml.draw(circuit_bad, decimals=3)(params))
+        result = qml.draw_mpl(circuit_bad, decimals=3, wire_options={'color':'teal', 'linewidth': 5})(params)
+        fig, ax = result if isinstance(result, tuple) else (result, None)
+        plt.savefig('circuit_diagrams/bug1_invalid_generator_operations.png', dpi=150, bbox_inches='tight')
+        plt.close(fig)
+        print("  ✓ Circuit diagram saved to: circuit_diagrams/bug1_invalid_generator_operations.png")
         print("\n⚠ PROBLEM: CNOT (non-generator) is interleaved between parameterized gates")
         print("   This breaks PSR's parameter dependency tracking!")
         print("-" * 70)
@@ -179,7 +188,11 @@ class PennyLaneGradientBugDemo:
         print("-" * 70)
         _ = circuit_state_reuse(params)  # Execute once to build circuit
         print("\nCircuit Structure (with state reuse - no-cloning violation):")
-        print(qml.draw(circuit_state_reuse, decimals=3)(params))
+        result = qml.draw_mpl(circuit_state_reuse, decimals=3, wire_options={'color':'teal', 'linewidth': 5})(params)
+        fig, ax = result if isinstance(result, tuple) else (result, None)
+        plt.savefig('circuit_diagrams/bug2_state_reuse_no_cloning.png', dpi=150, bbox_inches='tight')
+        plt.close(fig)
+        print("  ✓ Circuit diagram saved to: circuit_diagrams/bug2_state_reuse_no_cloning.png")
         print("\n⚠ PROBLEM: Creates entangled Bell state, then reuses qubit 0 multiple times")
         print("   Parameter θ₀ is used twice (RY on qubit 0, RX on qubit 1)")
         print("   This violates no-cloning principle in PSR shift evaluations!")
@@ -280,7 +293,11 @@ class PennyLaneGradientBugDemo:
         print("-" * 70)
         _ = batched_vqc(params, x=0.5)  # Execute once to build circuit
         print("\nCircuit Structure (Batched VQC with broadcasting):")
-        print(qml.draw(batched_vqc, decimals=3)(params, x=0.5))
+        result = qml.draw_mpl(batched_vqc, decimals=3, wire_options={'color':'teal', 'linewidth': 5})(params, x=0.5)
+        fig, ax = result if isinstance(result, tuple) else (result, None)
+        plt.savefig('circuit_diagrams/bug3_broadcasting_batched_vqc.png', dpi=150, bbox_inches='tight')
+        plt.close(fig)
+        print("  ✓ Circuit diagram saved to: circuit_diagrams/bug3_broadcasting_batched_vqc.png")
         print("\n⚠ PROBLEM: Data embedding (RY(x)) followed by parameterized gates")
         print("   When x is batched, broadcasting can cause inconsistent gradients!")
         print("-" * 70)
@@ -367,7 +384,11 @@ class PennyLaneGradientBugDemo:
         test_params = np.array([0.5, 0.3, 0.2, 0.1])
         _ = circuit_nan_risk(test_params)  # Execute once to build circuit
         print("\nCircuit Structure (with potential NaN-producing operations):")
-        print(qml.draw(circuit_nan_risk, decimals=3)(test_params))
+        result = qml.draw_mpl(circuit_nan_risk, decimals=3, wire_options={'color':'teal', 'linewidth': 5})(test_params)
+        fig, ax = result if isinstance(result, tuple) else (result, None)
+        plt.savefig('circuit_diagrams/bug4_silent_nan_errors.png', dpi=150, bbox_inches='tight')
+        plt.close(fig)
+        print("  ✓ Circuit diagram saved to: circuit_diagrams/bug4_silent_nan_errors.png")
         print("\n⚠ PROBLEM: Multiple parameterized gates + controlled rotation")
         print("   Edge case parameters (π/2, π, near zero) may cause NaN gradients!")
         print("-" * 70)
@@ -450,7 +471,11 @@ class PennyLaneGradientBugDemo:
         print("-" * 70)
         _ = circuit_param_reuse(params)  # Execute once to build circuit
         print("\nCircuit Structure (with parameter reuse):")
-        print(qml.draw(circuit_param_reuse, decimals=3)(params))
+        result = qml.draw_mpl(circuit_param_reuse, decimals=3, wire_options={'color':'teal', 'linewidth': 5})(params)
+        fig, ax = result if isinstance(result, tuple) else (result, None)
+        plt.savefig('circuit_diagrams/bug5_parameter_reuse.png', dpi=150, bbox_inches='tight')
+        plt.close(fig)
+        print("  ✓ Circuit diagram saved to: circuit_diagrams/bug5_parameter_reuse.png")
         print("\n⚠ PROBLEM: Parameter θ₀ used 3 times, θ₁ used 2 times")
         print("   PSR must correctly sum all contributions from each parameter!")
         print("   Parameter dependency tracking may fail with reuse!")
@@ -550,12 +575,20 @@ class PennyLaneGradientBugDemo:
         print("-" * 70)
         _ = circuit_order1(params)  # Execute once to build circuit
         print("\nCircuit 1 Structure (Order: param → entangle → param):")
-        print(qml.draw(circuit_order1, decimals=3)(params))
+        result1 = qml.draw_mpl(circuit_order1, decimals=3, wire_options={'color':'teal', 'linewidth': 5})(params)
+        fig1, ax1 = result1 if isinstance(result1, tuple) else (result1, None)
+        plt.savefig('circuit_diagrams/bug6a_circuit_order1.png', dpi=150, bbox_inches='tight')
+        plt.close(fig1)
+        print("  ✓ Circuit diagram saved to: circuit_diagrams/bug6a_circuit_order1.png")
         print("-" * 70)
         
         _ = circuit_order2(params)  # Execute once to build circuit
         print("\nCircuit 2 Structure (Order: entangle → param → param):")
-        print(qml.draw(circuit_order2, decimals=3)(params))
+        result2 = qml.draw_mpl(circuit_order2, decimals=3, wire_options={'color':'teal', 'linewidth': 5})(params)
+        fig2, ax2 = result2 if isinstance(result2, tuple) else (result2, None)
+        plt.savefig('circuit_diagrams/bug6a_circuit_order2.png', dpi=150, bbox_inches='tight')
+        plt.close(fig2)
+        print("  ✓ Circuit diagram saved to: circuit_diagrams/bug6a_circuit_order2.png")
         print("\n⚠ PROBLEM: Different operation orders can cause PSR to evaluate")
         print("   shifted circuits incorrectly, leading to gradient mismatches!")
         print("-" * 70)
@@ -687,7 +720,16 @@ class PennyLaneGradientBugDemo:
         print("-" * 70)
         _ = training_vqc(params, data)  # Execute once to build circuit
         print("\nComplex VQC Structure (combines multiple potential issues):")
-        print(qml.draw(training_vqc, decimals=3, max_length=100)(params, data))
+        result = qml.draw_mpl(training_vqc, decimals=3, wire_options={'color':'teal', 'linewidth': 5})(params, data)
+        # Handle both (fig, ax) tuple and single fig return
+        if isinstance(result, tuple):
+            fig, ax = result
+        else:
+            fig = result
+            ax = None
+        plt.savefig('circuit_diagrams/bug6_complex_vqc_training.png', dpi=150, bbox_inches='tight')
+        plt.close(fig)
+        print("  ✓ Circuit diagram saved to: circuit_diagrams/bug6_complex_vqc_training.png")
         print("\n⚠ PROBLEM: Complex circuit with:")
         print("   • Data embedding layer (RY gates)")
         print("   • Multiple parameterized layers (RX, RY, RZ)")
