@@ -290,3 +290,158 @@ footer {
     margin: 1rem 0;
     text-align: center;
 }
+
+/* Bug Comparison Table */
+.bug-comparison-table-container {
+    overflow-x: auto;
+    margin: 1rem 0;
+}
+
+.bug-comparison-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    font-size: 0.95rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.bug-comparison-table thead {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.bug-comparison-table th {
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    font-size: 1rem;
+    border-bottom: 2px solid rgba(255,255,255,0.2);
+}
+
+.bug-comparison-table th:first-child {
+    min-width: 250px;
+}
+
+.bug-comparison-table th:not(:first-child) {
+    text-align: center;
+    min-width: 180px;
+}
+
+.bug-comparison-table tbody tr {
+    border-bottom: 1px solid #e0e0e0;
+    transition: background-color 0.2s ease;
+}
+
+.bug-comparison-table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.bug-comparison-table td {
+    padding: 1rem;
+    vertical-align: top;
+}
+
+.bug-comparison-table td.bug-name {
+    font-weight: 500;
+}
+
+.bug-comparison-table .bug-description {
+    font-size: 0.85rem;
+    color: #666;
+    margin-top: 0.25rem;
+    font-style: italic;
+}
+
+.bug-comparison-table td:not(:first-child) {
+    text-align: center;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+}
+
+.status-badge.pass {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.status-badge.warn {
+    background-color: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.status-badge.fail {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.status-detail {
+    font-size: 0.85rem;
+    color: #666;
+    line-height: 1.4;
+    max-width: 200px;
+    margin: 0 auto;
+}
+
+.status-fail {
+    background-color: #fff5f5;
+}
+
+.status-warn {
+    background-color: #fffbf0;
+}
+
+.status-pass {
+    background-color: #f0f9ff;
+}
+
+/* Responsive table */
+@media (max-width: 1200px) {
+    .bug-comparison-table {
+        font-size: 0.85rem;
+    }
+    
+    .bug-comparison-table th,
+    .bug-comparison-table td {
+        padding: 0.75rem 0.5rem;
+    }
+    
+    .status-detail {
+        font-size: 0.75rem;
+        max-width: 150px;
+    }
+}
+
+@media (max-width: 768px) {
+    .bug-comparison-table-container {
+        overflow-x: scroll;
+    }
+    
+    .bug-comparison-table {
+        min-width: 800px;
+        font-size: 0.8rem;
+    }
+    
+    .bug-comparison-table th,
+    .bug-comparison-table td {
+        padding: 0.5rem;
+    }
+    
+    .status-badge {
+        font-size: 0.8rem;
+        padding: 0.3rem 0.6rem;
+    }
+    
+    .status-detail {
+        font-size: 0.7rem;
+        max-width: 120px;
+    }
+}
