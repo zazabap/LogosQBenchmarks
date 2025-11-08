@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Comprehensive demonstration of Qiskit gradient errors related to 
 Parameter-Shift Rule (PSR) usage.
@@ -53,12 +54,111 @@ class QiskitGradientBugDemo:
         """Setup different gradient methods for testing"""
         if ParameterShiftGradient is not None:
             self.gradient_psr = ParameterShiftGradient()
+            self.use_builtin_psr = True
         else:
             self.gradient_psr = None
+            self.use_builtin_psr = False
+            print("⚠ NOTE: ParameterShiftGradient not available. Using manual PSR implementation.")
         if FiniteDiffGradient is not None:
             self.gradient_fd = FiniteDiffGradient(epsilon=1e-5)
+            self.use_builtin_fd = True
         else:
             self.gradient_fd = None
+            self.use_builtin_fd = False
+    
+    def manual_parameter_shift(self, circuit, observable, param_dict, shift=0.5):
+        """
+        Manual parameter shift rule implementation as fallback
+        For Pauli rotations: ∂f/∂θ = (1/2) * [f(θ + π/2) - f(θ - π/2)]
+        """
+        from qiskit.quantum_info import SparsePauliOp
+        
+        # Extract parameters and values
+        params = list(param_dict.keys())
+        param_values = list(param_dict.values())
+        
+        grad = np.zeros(len(params))
+        s = np.pi / 2  # Standard shift for Pauli rotations
+        
+        # Compute expectation at current point
+        bound_circuit = circuit.assign_parameters(param_dict)
+        statevector = Statevector.from_instruction(bound_circuit.remove_final_measurements(inplace=False))
+        f0 = statevector.expectation_value(observable)
+        
+        # Compute gradient for each parameter
+        for i, param in enumerate(params):
+            # Shift parameter up
+            param_dict_plus = param_dict.copy()
+            param_dict_plus[param] = param_values[i] + s
+            bound_circuit_plus = circuit.assign_parameters(param_dict_plus)
+            statevector_plus = Statevector.from_instruction(bound_circuit_plus.remove_final_measurements(inplace=False))
+            f_plus = statevector_plus.expectation_value(observable)
+            
+            # Shift parameter down
+            param_dict_minus = param_dict.copy()
+            param_dict_minus[param] = param_values[i] - s
+            bound_circuit_minus = circuit.assign_parameters(param_dict_minus)
+            statevector_minus = Statevector.from_instruction(bound_circuit_minus.remove_final_measurements(inplace=False))
+            f_minus = statevector_minus.expectation_value(observable)
+            
+            # Parameter shift rule: ∂f/∂θ = (1/2) * [f(θ + π/2) - f(θ - π/2)]
+            # Take real part if complex (expectation values should be real)
+            grad[i] = 0.5 * np.real(f_plus - f_minus)
+        
+        return grad
+    
+    def manual_finite_difference(self, circuit, observable, param_dict, epsilon=1e-5):
+        """Manual finite difference gradient computation as fallback"""
+        from qiskit.quantum_info import SparsePauliOp
+        
+        params = list(param_dict.keys())
+        param_values = list(param_dict.values())
+        
+        grad = np.zeros(len(params))
+        
+        # Compute expectation at current point
+        bound_circuit = circuit.assign_parameters(param_dict)
+        statevector = Statevector.from_instruction(bound_circuit.remove_final_measurements(inplace=False))
+        f0 = statevector.expectation_value(observable)
+        
+        # Compute gradient for each parameter
+        for i, param in enumerate(params):
+            param_dict_plus = param_dict.copy()
+            param_dict_plus[param] = param_values[i] + epsilon
+            bound_circuit_plus = circuit.assign_parameters(param_dict_plus)
+            statevector_plus = Statevector.from_instruction(bound_circuit_plus.remove_final_measurements(inplace=False))
+            f_plus = statevector_plus.expectation_value(observable)
+            
+            # Take real part if complex (expectation values should be real)
+            grad[i] = np.real(f_plus - f0) / epsilon
+        
+        return grad
+    
+    def compute_psr_gradient(self, circuit, observable, param_dict):
+        """Helper function to compute PSR gradient using built-in or manual method"""
+        if self.use_builtin_psr:
+            grad_result = self.gradient_psr.run([circuit], self.estimator, [observable], [param_dict]).result()
+            grad = grad_result.gradients[0]
+            if hasattr(grad, 'data'):
+                grad = np.array(grad.data).flatten()
+            else:
+                grad = np.array(grad).flatten()
+        else:
+            grad = self.manual_parameter_shift(circuit, observable, param_dict)
+        return grad
+    
+    def compute_fd_gradient(self, circuit, observable, param_dict):
+        """Helper function to compute finite difference gradient using built-in or manual method"""
+        if self.use_builtin_fd:
+            grad_result = self.gradient_fd.run([circuit], self.estimator, [observable], [param_dict]).result()
+            grad_fd = grad_result.gradients[0]
+            if hasattr(grad_fd, 'data'):
+                grad_fd = np.array(grad_fd.data).flatten()
+            else:
+                grad_fd = np.array(grad_fd).flatten()
+        else:
+            grad_fd = self.manual_finite_difference(circuit, observable, param_dict)
+        return grad_fd
     
     def bug_1_invalid_generator_operations(self):
         """
@@ -121,26 +221,14 @@ class QiskitGradientBugDemo:
             
             print(f"✓ Circuit expectation value: {expectation}")
             
-            # Check if gradient classes are available
-            if self.gradient_psr is None:
-                print("⚠ WARNING: ParameterShiftGradient not available. Please install qiskit-algorithms.")
-                return
+            # Create observable
+            from qiskit.quantum_info import SparsePauliOp
+            observable = SparsePauliOp(['ZIII'], coeffs=[1.0])
             
             # Try to compute gradient using PSR
             try:
-                # Create observable
-                from qiskit.quantum_info import SparsePauliOp
-                observable = SparsePauliOp(['ZIII'], coeffs=[1.0])
-                
-                # Compute gradient (use estimator for expectation values)
-                grad_result = self.gradient_psr.run([circuit], self.estimator, [observable], [dict(zip(theta, params))]).result()
-                grad = grad_result.gradients[0]
-                
-                # Convert to numpy array
-                if hasattr(grad, 'data'):
-                    grad = np.array(grad.data).flatten()
-                else:
-                    grad = np.array(grad).flatten()
+                param_dict = dict(zip(theta, params))
+                grad = self.compute_psr_gradient(circuit, observable, param_dict)
                 
                 print(f"✓ PSR Gradient computed: {grad}")
                 
@@ -150,14 +238,7 @@ class QiskitGradientBugDemo:
                 
                 # Verify against finite difference
                 try:
-                    grad_fd_result = self.gradient_fd.run([circuit], self.estimator, [observable], [dict(zip(theta, params))]).result()
-                    grad_fd = grad_fd_result.gradients[0]
-                    
-                    if hasattr(grad_fd, 'data'):
-                        grad_fd = np.array(grad_fd.data).flatten()
-                    else:
-                        grad_fd = np.array(grad_fd).flatten()
-                    
+                    grad_fd = self.compute_fd_gradient(circuit, observable, param_dict)
                     print(f"  Finite-diff gradient: {grad_fd}")
                     
                     # Check if gradients match
@@ -260,15 +341,9 @@ class QiskitGradientBugDemo:
             try:
                 from qiskit.quantum_info import SparsePauliOp
                 observable = SparsePauliOp(['ZZII'], coeffs=[1.0])
+                param_dict = dict(zip(theta, params))
                 
-                grad_result = self.gradient_psr.run([circuit], self.estimator, [observable], [dict(zip(theta, params))]).result()
-                grad = grad_result.gradients[0]
-                
-                if hasattr(grad, 'data'):
-                    grad = np.array(grad.data).flatten()
-                else:
-                    grad = np.array(grad).flatten()
-                
+                grad = self.compute_psr_gradient(circuit, observable, param_dict)
                 print(f"✓ PSR Gradient computed: {grad}")
                 
                 # Check for silent errors
@@ -277,14 +352,7 @@ class QiskitGradientBugDemo:
                 
                 # Compare with finite difference
                 try:
-                    grad_fd_result = self.gradient_fd.run([circuit], self.estimator, [observable], [dict(zip(theta, params))]).result()
-                    grad_fd = grad_fd_result.gradients[0]
-                    
-                    if hasattr(grad_fd, 'data'):
-                        grad_fd = np.array(grad_fd.data).flatten()
-                    else:
-                        grad_fd = np.array(grad_fd).flatten()
-                    
+                    grad_fd = self.compute_fd_gradient(circuit, observable, param_dict)
                     print(f"  Finite-diff gradient: {grad_fd}")
                     
                     if len(grad) == 0:
@@ -372,15 +440,9 @@ class QiskitGradientBugDemo:
             
             from qiskit.quantum_info import SparsePauliOp
             observable = SparsePauliOp(['ZIII'], coeffs=[1.0])
+            param_dict = dict(zip(theta, params))
             
-            grad_result = self.gradient_psr.run([circuit_single], self.estimator, [observable], [dict(zip(theta, params))]).result()
-            grad_single = grad_result.gradients[0]
-            
-            if hasattr(grad_single, 'data'):
-                grad_single = np.array(grad_single.data).flatten()
-            else:
-                grad_single = np.array(grad_single).flatten()
-            
+            grad_single = self.compute_psr_gradient(circuit_single, observable, param_dict)
             print(f"✓ Single input gradient: {grad_single}")
         except Exception as e:
             print(f"✗ ERROR with single input: {e}")
@@ -399,14 +461,8 @@ class QiskitGradientBugDemo:
                     circuit_batch = create_vqc(x_val)
                     circuit_batch.measure_all()
                     
-                    grad_result = self.gradient_psr.run([circuit_batch], self.estimator, [observable], [dict(zip(theta, params))]).result()
-                    grad = grad_result.gradients[0]
-                    
-                    if hasattr(grad, 'data'):
-                        grad = np.array(grad.data).flatten()
-                    else:
-                        grad = np.array(grad).flatten()
-                    
+                    param_dict = dict(zip(theta, params))
+                    grad = self.compute_psr_gradient(circuit_batch, observable, param_dict)
                     grads.append(grad)
                     
                     # Compute expectation
@@ -498,13 +554,8 @@ class QiskitGradientBugDemo:
         nan_count = 0
         for name, params in test_cases:
             try:
-                grad_result = self.gradient_psr.run([circuit], self.estimator, [observable], [dict(zip(theta, params))]).result()
-                grad = grad_result.gradients[0]
-                
-                if hasattr(grad, 'data'):
-                    grad = np.array(grad.data).flatten()
-                else:
-                    grad = np.array(grad).flatten()
+                param_dict = dict(zip(theta, params))
+                grad = self.compute_psr_gradient(circuit, observable, param_dict)
                 
                 has_nan = np.any(np.isnan(grad)) or np.any(np.isinf(grad))
                 
@@ -575,27 +626,14 @@ class QiskitGradientBugDemo:
         try:
             from qiskit.quantum_info import SparsePauliOp
             observable = SparsePauliOp(['ZIII'], coeffs=[1.0])
+            param_dict = dict(zip(theta, params))
             
-            grad_result = self.gradient_psr.run([circuit], self.estimator, [observable], [dict(zip(theta, params))]).result()
-            grad = grad_result.gradients[0]
-            
-            if hasattr(grad, 'data'):
-                grad = np.array(grad.data).flatten()
-            else:
-                grad = np.array(grad).flatten()
-            
+            grad = self.compute_psr_gradient(circuit, observable, param_dict)
             print(f"✓ PSR Gradient with param reuse: {grad}")
             
             # Compare with finite difference
             try:
-                grad_fd_result = self.gradient_fd.run([circuit], self.estimator, [observable], [dict(zip(theta, params))]).result()
-                grad_fd = grad_fd_result.gradients[0]
-                
-                if hasattr(grad_fd, 'data'):
-                    grad_fd = np.array(grad_fd.data).flatten()
-                else:
-                    grad_fd = np.array(grad_fd).flatten()
-                
+                grad_fd = self.compute_fd_gradient(circuit, observable, param_dict)
                 print(f"  Finite-diff gradient: {grad_fd}")
                 
                 # PSR should correctly sum contributions from all uses
@@ -682,20 +720,10 @@ class QiskitGradientBugDemo:
         try:
             from qiskit.quantum_info import SparsePauliOp
             observable = SparsePauliOp(['ZIII'], coeffs=[1.0])
+            param_dict = dict(zip(theta, params))
             
-            grad1_result = self.gradient_psr.run([circuit1], self.estimator, [observable], [dict(zip(theta, params))]).result()
-            grad1 = grad1_result.gradients[0]
-            if hasattr(grad1, 'data'):
-                grad1 = np.array(grad1.data).flatten()
-            else:
-                grad1 = np.array(grad1).flatten()
-            
-            grad2_result = self.gradient_psr.run([circuit2], self.estimator, [observable], [dict(zip(theta, params))]).result()
-            grad2 = grad2_result.gradients[0]
-            if hasattr(grad2, 'data'):
-                grad2 = np.array(grad2.data).flatten()
-            else:
-                grad2 = np.array(grad2).flatten()
+            grad1 = self.compute_psr_gradient(circuit1, observable, param_dict)
+            grad2 = self.compute_psr_gradient(circuit2, observable, param_dict)
             
             print(f"✓ Circuit 1 gradient: {grad1}")
             print(f"✓ Circuit 2 gradient: {grad2}")
@@ -707,19 +735,8 @@ class QiskitGradientBugDemo:
             
             # Verify with finite difference
             try:
-                grad_fd1_result = self.gradient_fd.run([circuit1], self.estimator, [observable], [dict(zip(theta, params))]).result()
-                grad_fd1 = grad_fd1_result.gradients[0]
-                if hasattr(grad_fd1, 'data'):
-                    grad_fd1 = np.array(grad_fd1.data).flatten()
-                else:
-                    grad_fd1 = np.array(grad_fd1).flatten()
-                
-                grad_fd2_result = self.gradient_fd.run([circuit2], self.estimator, [observable], [dict(zip(theta, params))]).result()
-                grad_fd2 = grad_fd2_result.gradients[0]
-                if hasattr(grad_fd2, 'data'):
-                    grad_fd2 = np.array(grad_fd2.data).flatten()
-                else:
-                    grad_fd2 = np.array(grad_fd2).flatten()
+                grad_fd1 = self.compute_fd_gradient(circuit1, observable, param_dict)
+                grad_fd2 = self.compute_fd_gradient(circuit2, observable, param_dict)
                 
                 print(f"  FD Circuit 1: {grad_fd1}")
                 print(f"  FD Circuit 2: {grad_fd2}")
@@ -844,21 +861,12 @@ class QiskitGradientBugDemo:
             # For simplicity, compute gradient for sum of expectations
             # This requires computing gradients separately and summing
             try:
-                grad_result1 = self.gradient_psr.run([circuit], self.estimator, [observable1], [dict(zip(theta, params))]).result()
-                grad_result2 = self.gradient_psr.run([circuit], self.estimator, [observable2], [dict(zip(theta, params))]).result()
-                
-                grad1 = grad_result1.gradients[0]
-                grad2 = grad_result2.gradients[0]
-                
-                if hasattr(grad1, 'data'):
-                    grad1 = np.array(grad1.data).flatten()
-                    grad2 = np.array(grad2.data).flatten()
-                else:
-                    grad1 = np.array(grad1).flatten()
-                    grad2 = np.array(grad2).flatten()
+                param_dict = dict(zip(theta, params))
+                grad1 = self.compute_psr_gradient(circuit, observable1, param_dict)
+                grad2 = self.compute_psr_gradient(circuit, observable2, param_dict)
                 
                 grad = grad1 + grad2
-                print(f"✓ Gradient computed: shape={grad.shape}")
+                print(f"✓ Gradient computed: shape={len(grad)}")
                 print(f"  Gradient values: {grad}")
                 
                 # Check for issues

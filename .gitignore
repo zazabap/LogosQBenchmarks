@@ -80,3 +80,5 @@ tmp/
 # Backup files
 *.bak
 *.backup
+test_results/
+circuit_diagrams/

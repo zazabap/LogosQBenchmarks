@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Comprehensive demonstration of PennyLane gradient errors related to 
 Parameter-Shift Rule (PSR) usage.
@@ -830,8 +831,8 @@ class PennyLaneGradientBugDemo:
 def main():
     """Main entry point"""
     demo = PennyLaneGradientBugDemo()
-    # demo.run_all_demos()
-    demo.bug_1_invalid_generator_operations()
+    demo.run_all_demos()
+    # demo.bug_1_invalid_generator_operations()
 
 
 if __name__ == "__main__":
