@@ -5,10 +5,14 @@ Parameter-Shift Rule (PSR) usage.
 
 This script demonstrates:
 1. Invalid parameter-shift rule usage with non-generator operations
-2. "No-cloning" violations through state reuse across shifts
 3. Broadcasting issues with batched VQCs
 4. Silent NaN errors and wrong gradients
-5. Edge cases that cause crashes or incorrect results
+5. Parameter reuse and circular dependencies
+6a. Operation ordering causing PSR evaluation errors
+6. Complex VQC training failure scenarios
+
+Note: Bug 2 (no-cloning violations through state reuse) was removed as it was
+too contrived. Bug 5 already comprehensively covers parameter reuse.
 """
 
 import numpy as np
@@ -272,118 +276,6 @@ class QiskitGradientBugDemo:
             traceback.print_exc()
         
         self.results['bug_1'] = {'status': 'demonstrated', 'params': params}
-    
-    def bug_2_state_reuse_no_cloning(self):
-        """
-        BUG 2: No-cloning violations through state reuse
-        
-        Problem: PSR requires evaluating shifted circuits (+s and -s), but Python's 
-        dynamism allows reusing qubit states across shifts without proper isolation, 
-        leading to incorrect gradient computation.
-        """
-        print("\n" + "="*70)
-        print("BUG 2: No-Cloning Violations - State Reuse Across Shifts")
-        print("="*70)
-        
-        # Create parameters
-        theta = [Parameter('θ0'), Parameter('θ1')]
-        params = np.array([0.5, 0.3])
-        
-        # Build circuit that creates entangled state, then tries to reuse it
-        circuit = QuantumCircuit(4)
-        # Create entangled state (Bell state)
-        circuit.h(0)
-        circuit.cx(0, 1)
-        
-        # Apply parameterized rotation to entangled qubit
-        circuit.ry(theta[0], 0)
-        
-        # PROBLEM: Reusing entangled state for another parameterized operation
-        # In PSR, when computing shifts, the state from first operation 
-        # should be isolated, but Python allows implicit reuse
-        circuit.rz(theta[1], 0)  # Reusing qubit 0 after entanglement
-        
-        # Another operation that depends on the entangled state
-        circuit.rx(theta[0], 1)  # Same parameter used twice - problematic!
-        
-        # Add measurement
-        circuit.measure_all()
-        
-        # Visualize the circuit
-        print("\n📊 Circuit Visualization:")
-        print("-" * 70)
-        print("\nCircuit Structure (with state reuse - no-cloning violation):")
-        try:
-            circuit.draw(output='mpl', filename='circuit_diagrams/bug2_state_reuse_no_cloning.png', style='clifford')
-            print("  ✓ Circuit diagram saved to: circuit_diagrams/bug2_state_reuse_no_cloning.png")
-        except Exception as e:
-            print(f"  ⚠ Could not save diagram: {e}")
-            print(circuit.draw(output='text'))
-        print("\n⚠ PROBLEM: Creates entangled Bell state, then reuses qubit 0 multiple times")
-        print("   Parameter θ₀ is used twice (RY on qubit 0, RX on qubit 1)")
-        print("   This violates no-cloning principle in PSR shift evaluations!")
-        print("-" * 70)
-        
-        try:
-            # Bind parameters
-            bound_circuit = circuit.assign_parameters(dict(zip(theta, params)))
-            
-            # Compute expectation value
-            statevector = Statevector.from_instruction(bound_circuit.remove_final_measurements(inplace=False))
-            # Measure Z on both qubits
-            from qiskit.quantum_info import SparsePauliOp
-            zz_observable = SparsePauliOp(['ZZII'], coeffs=[1.0])
-            expectation = statevector.expectation_value(zz_observable)
-            
-            print(f"✓ Circuit expectation value: {expectation}")
-            
-            # Try to compute gradient using PSR
-            try:
-                from qiskit.quantum_info import SparsePauliOp
-                observable = SparsePauliOp(['ZZII'], coeffs=[1.0])
-                param_dict = dict(zip(theta, params))
-                
-                grad = self.compute_psr_gradient(circuit, observable, param_dict)
-                print(f"✓ PSR Gradient computed: {grad}")
-                
-                # Check for silent errors
-                if np.any(np.isnan(grad)) or np.any(np.isinf(grad)):
-                    print(f"⚠ ERROR: Gradient contains NaN/Inf! {grad}")
-                
-                # Compare with finite difference
-                try:
-                    grad_fd = self.compute_fd_gradient(circuit, observable, param_dict)
-                    print(f"  Finite-diff gradient: {grad_fd}")
-                    
-                    if len(grad) == 0:
-                        print(f"⚠ WARNING: PSR returned empty gradient! This indicates a bug.")
-                    elif len(grad_fd) == 0:
-                        print(f"⚠ WARNING: Finite-diff returned empty gradient!")
-                    elif len(grad) == len(grad_fd):
-                        diff = np.abs(grad - grad_fd)
-                        if len(diff) > 0:
-                            max_diff = np.max(diff)
-                            if max_diff > 1e-3:
-                                print(f"⚠ WARNING: Significant gradient mismatch! Max diff: {max_diff}")
-                                print(f"  PSR: {grad}")
-                                print(f"  FD:  {grad_fd}")
-                                print(f"  This indicates incorrect gradient due to state reuse")
-                    else:
-                        print(f"⚠ WARNING: Gradient shape mismatch!")
-                except Exception as e:
-                    print(f"  ⚠ Could not compute finite-diff gradient: {e}")
-                    
-            except Exception as e:
-                print(f"✗ ERROR: {e}")
-                import traceback
-                traceback.print_exc()
-            
-        except Exception as e:
-            print(f"✗ ERROR: {e}")
-            import traceback
-            traceback.print_exc()
-        
-        self.results['bug_2'] = {'status': 'demonstrated'}
     
     def bug_3_broadcasting_batched_vqc(self):
         """
@@ -927,7 +819,7 @@ class QiskitGradientBugDemo:
         print("  • Wasted compute resources")
         
         self.bug_1_invalid_generator_operations()
-        self.bug_2_state_reuse_no_cloning()
+        # Bug 2 removed - too contrived, Bug 5 already covers parameter reuse comprehensively
         self.bug_3_broadcasting_batched_vqc()
         self.bug_4_silent_nan_errors()
         self.bug_5_parameter_reuse_and_dependencies()
@@ -941,7 +833,6 @@ class QiskitGradientBugDemo:
         print(f"Demonstrated {len(self.results)} different categories of gradient bugs")
         print("\nKey Issues Found:")
         print("  1. Invalid generator operations can lead to wrong gradients")
-        print("  2. State reuse violates no-cloning and causes errors")
         print("  3. Broadcasting in batched VQCs produces inconsistent results")
         print("  4. Silent NaN errors from edge cases are not caught")
         print("  5. Parameter reuse can cause incorrect gradient computation")

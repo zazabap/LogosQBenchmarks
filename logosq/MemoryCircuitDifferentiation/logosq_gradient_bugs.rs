@@ -5,13 +5,17 @@
 //! that were found in PennyLane, and verifies whether LogosQ (a type-safe,
 //! compile-time-checked solution) prevents or handles these bugs correctly.
 //!
-//! Test scenarios:
-//! 1. Parameter reuse across multiple gates
-//! 2. Entangled state handling in PSR
-//! 3. Complex VQC with multiple layers
-//! 4. Edge cases that might cause NaN errors
-//! 5. Parameter dependencies and ordering
-//! 6. Complex training scenarios
+//! Test scenarios (matching PennyLane bug order):
+//! 1. Interleaving non-parameterized gates with parameterized gates
+//! 3. Sequential batch processing issues with VQCs
+//! 4. Silent NaN errors from edge cases
+//! 5. Parameter reuse in multiple gates
+//!
+//! 6a. Operation ordering and PSR gradient computation
+//! 6. Complex VQC training failure scenarios
+//!
+//! Note: Bug 2 (parameter reuse in entangled circuits) was removed as it was
+//! too contrived. Bug 5 already comprehensively covers parameter reuse.
 
 use logosq::circuits::Circuit;
 use logosq::optimization::ansatz::{Ansatz, ParameterizedCircuit};
@@ -31,35 +35,25 @@ impl LogosQGradientBugDemo {
         }
     }
 
-    /// BUG TEST 1: Invalid generator operations in parameter positions
+    /// BUG 1: Interleaving non-parameterized gates with parameterized gates
     ///
-    /// Problem: PSR requires generators (e.g., Pauli rotations), but non-generator
-    /// operations like CNOT interleaved between parameterized gates can break
-    /// PSR's parameter dependency tracking.
+    /// Problem: When non-parameterized gates (like CNOT) are interleaved between
+    /// parameterized gates, PSR's parameter dependency tracking may be affected,
+    /// potentially leading to incorrect gradient computation.
     fn test_bug_1_invalid_generator_operations(&mut self) {
         println!("\n{}", "=".repeat(70));
-        println!("BUG 1: Invalid Generator Operations in Parameter Positions");
+        println!("BUG 1: Interleaving Non-Parameterized Gates with Parameterized Gates");
         println!("{}", "=".repeat(70));
 
-        // Create circuit with non-generator operations interleaved with parameterized gates
         let ansatz = ParameterizedCircuit::new(
             4,
             3,
             move |params| {
                 let mut circuit = Circuit::new(4);
-                // Valid: Pauli rotation with parameter
                 circuit.rx(0, params[0]);
-                
-                // PROBLEM: Non-generator operation (CNOT) interleaved between parameterized gates
-                // This breaks PSR's parameter dependency tracking
                 circuit.cnot(0, 1);
-                
-                // Another valid rotation, but now we're mixing valid/invalid
                 circuit.ry(1, params[1]);
-                
-                // More problematic: controlled gate that might not support PSR properly
                 circuit.cry(0, 1, params[2]);
-                
                 circuit
             },
         );
@@ -70,8 +64,8 @@ impl LogosQGradientBugDemo {
 
         let params = vec![0.5, PI / 2.0, 0.3];
 
-        println!("\n⚠ PROBLEM: CNOT (non-generator) is interleaved between parameterized gates");
-        println!("   This breaks PSR's parameter dependency tracking!");
+        println!("\n⚠ PROBLEM: CNOT (non-parameterized) is interleaved between parameterized gates");
+        println!("   This may affect PSR's parameter dependency tracking!");
         println!("{}", "-".repeat(70));
 
         let ps_grad = ps_method.compute_gradient(&ansatz, &obs, &params);
@@ -128,32 +122,26 @@ impl LogosQGradientBugDemo {
         );
     }
 
-    /// BUG TEST 3: Broadcasting issues with batched VQCs
+    /// BUG 3: Sequential batch processing issues with VQCs
     ///
-    /// Problem: In batched/VQC setups with broadcasting, PSR may fail silently
-    /// or compute incorrect gradients when parameters are broadcast across
-    /// multiple circuit evaluations.
+    /// Problem: When processing batches of data sequentially, PSR may compute
+    /// inconsistent gradients across different data points, or fail silently
+    /// when evaluating gradients for multiple inputs.
     fn test_bug_3_broadcasting_batched_vqc(&mut self) {
         println!("\n{}", "=".repeat(70));
-        println!("BUG 3: Broadcasting Issues with Batched VQCs");
+        println!("BUG 3: Sequential Batch Processing Issues with VQCs");
         println!("{}", "=".repeat(70));
 
-        // Create a variational quantum circuit that takes both trainable params and data input x
-        // Broadcasting can cause issues when x is batched
         let ansatz = ParameterizedCircuit::new(
             4,
-            4, // params: [theta0, theta1, theta2, x]
+            4,
             move |params| {
                 let mut circuit = Circuit::new(4);
-                // Embed data (x is params[3])
                 circuit.ry(0, params[3]);
-                
-                // Parameterized layers
                 circuit.ry(0, params[0]);
                 circuit.rx(1, params[1]);
                 circuit.cnot(0, 1);
                 circuit.rz(0, params[2]);
-                
                 circuit
             },
         );
@@ -161,10 +149,10 @@ impl LogosQGradientBugDemo {
         let obs = PauliObservable::single_z(4, 0);
         let ps_method = ParameterShift::new();
 
-        let params = vec![0.1, 0.2, 0.3, 0.5]; // Last param is x (data)
+        let params = vec![0.1, 0.2, 0.3, 0.5];
 
         println!("\n⚠ PROBLEM: Data embedding (RY(x)) followed by parameterized gates");
-        println!("   When x is batched, broadcasting can cause inconsistent gradients!");
+        println!("   When processing x values sequentially, gradients may be inconsistent!");
         println!("{}", "-".repeat(70));
 
         // Test with single input
@@ -186,7 +174,7 @@ impl LogosQGradientBugDemo {
 
         if !grads.is_empty() && grads.iter().all(|g| !g.is_empty()) {
             // Check for inconsistencies
-            let grad_arrays: Vec<Vec<f64>> = grads.iter().map(|g| g.clone()).collect();
+            let grad_arrays: Vec<Vec<f64>> = grads.to_vec();
             
             // Compute variance across batch for each gradient component
             let num_params = grad_arrays[0].len();
@@ -229,260 +217,13 @@ impl LogosQGradientBugDemo {
         );
     }
 
-    /// BUG TEST 1: Parameter reuse across multiple gates
+    /// BUG 4: Silent NaN errors from edge cases
     ///
-    /// Problem: Reusing the same parameter in multiple gates can cause issues
-    /// in PSR if not properly tracked. In Rust's type system, this is handled
-    /// correctly since parameters are explicitly passed.
-    fn test_1_parameter_reuse(&mut self) {
+    /// Problem: Certain parameter values or circuit configurations cause
+    /// NaN gradients that are not caught or reported properly.
+    fn test_bug_4_silent_nan_errors(&mut self) {
         println!("\n{}", "=".repeat(70));
-        println!("TEST 1: Parameter Reuse Across Multiple Gates");
-        println!("{}", "=".repeat(70));
-
-        // Create a custom ansatz where same parameter is used in multiple gates
-        let ansatz = ParameterizedCircuit::new(
-            2,
-            2,
-            move |params| {
-                let mut circuit = Circuit::new(2);
-                // Reuse params[0] in multiple places
-                circuit.rx(0, params[0]);
-                circuit.ry(1, params[0]); // Same param reused
-                circuit.cnot(0, 1);
-                circuit.rz(0, params[1]);
-                circuit.rx(0, params[0]); // Same param again!
-                circuit.cry(0, 1, params[1]); // Reuse params[1]
-                circuit
-            },
-        );
-
-        let obs = PauliObservable::single_z(2, 0);
-        let ps_method = ParameterShift::new();
-        let fd_method = FiniteDifference::new(1e-7);
-
-        let params = vec![0.5, 0.3];
-
-        let ps_grad = ps_method.compute_gradient(&ansatz, &obs, &params);
-        let fd_grad = fd_method.compute_gradient(&ansatz, &obs, &params);
-
-        println!("✓ PSR Gradient computed: {:?}", ps_grad);
-        println!("  Finite-diff gradient: {:?}", fd_grad);
-
-        // Check for NaN
-        let ps_has_nan = ps_grad.iter().any(|&g| g.is_nan() || g.is_infinite());
-        let fd_has_nan = fd_grad.iter().any(|&g| g.is_nan() || g.is_infinite());
-
-        if ps_has_nan {
-            println!("⚠ WARNING: PSR gradient contains NaN/Inf!");
-        }
-        if fd_has_nan {
-            println!("⚠ WARNING: Finite-diff gradient contains NaN/Inf!");
-        }
-
-        // Compare gradients
-        if ps_grad.len() == fd_grad.len() && !ps_has_nan && !fd_has_nan {
-            let max_diff = ps_grad
-                .iter()
-                .zip(fd_grad.iter())
-                .map(|(p, f)| (p - f).abs())
-                .fold(0.0, f64::max);
-
-            if max_diff > 1e-4 {
-                println!("⚠ WARNING: Gradient mismatch! Max difference: {:.6}", max_diff);
-            } else {
-                println!("✓ Gradients match within tolerance");
-            }
-        }
-
-        self.results.insert(
-            "test_1".to_string(),
-            if ps_has_nan || fd_has_nan {
-                "FAILED: NaN detected".to_string()
-            } else {
-                "PASSED".to_string()
-            },
-        );
-    }
-
-    /// BUG TEST 2: Entangled state handling in PSR
-    ///
-    /// Problem: Creating entangled states and then applying parameterized gates
-    /// should work correctly with PSR. Each shift should create fresh states.
-    fn test_2_entangled_state_handling(&mut self) {
-        println!("\n{}", "=".repeat(70));
-        println!("TEST 2: Entangled State Handling in PSR");
-        println!("{}", "=".repeat(70));
-
-        // Circuit that creates Bell state, then applies parameterized gates
-        let ansatz = ParameterizedCircuit::new(
-            2,
-            2,
-            move |params| {
-                let mut circuit = Circuit::new(2);
-                // Create Bell state (entangled)
-                circuit.h(0);
-                circuit.cnot(0, 1);
-                // Apply parameterized rotation to entangled qubit
-                circuit.ry(0, params[0]);
-                circuit.rz(0, params[1]); // Reusing qubit 0 after entanglement
-                circuit.rx(1, params[0]); // Same parameter used twice
-                circuit
-            },
-        );
-
-        // Measure ZZ correlation
-        let mut obs = PauliObservable::new(2);
-        obs.add_term(PauliTerm::new(1.0, vec![Pauli::Z, Pauli::Z]));
-
-        let ps_method = ParameterShift::new();
-        let fd_method = FiniteDifference::new(1e-7);
-
-        let params = vec![0.5, 0.3];
-
-        let ps_grad = ps_method.compute_gradient(&ansatz, &obs, &params);
-        let fd_grad = fd_method.compute_gradient(&ansatz, &obs, &params);
-
-        println!("✓ PSR Gradient computed: {:?}", ps_grad);
-        println!("  Finite-diff gradient: {:?}", fd_grad);
-
-        let ps_has_nan = ps_grad.iter().any(|&g| g.is_nan() || g.is_infinite());
-        let fd_has_nan = fd_grad.iter().any(|&g| g.is_nan() || g.is_infinite());
-
-        if ps_has_nan {
-            println!("⚠ ERROR: PSR gradient contains NaN/Inf! {:?}", ps_grad);
-        } else if fd_has_nan {
-            println!("⚠ ERROR: Finite-diff gradient contains NaN/Inf! {:?}", fd_grad);
-        } else if ps_grad.len() == fd_grad.len() {
-            let max_diff = ps_grad
-                .iter()
-                .zip(fd_grad.iter())
-                .map(|(p, f)| (p - f).abs())
-                .fold(0.0, f64::max);
-
-            if max_diff > 1e-3 {
-                println!(
-                    "⚠ WARNING: Significant gradient mismatch! Max diff: {:.6}",
-                    max_diff
-                );
-            } else {
-                println!("✓ Gradients match within tolerance");
-            }
-        }
-
-        self.results.insert(
-            "test_2".to_string(),
-            if ps_has_nan || fd_has_nan {
-                "FAILED: NaN detected".to_string()
-            } else {
-                "PASSED".to_string()
-            },
-        );
-    }
-
-    /// BUG TEST 3: Complex VQC with multiple layers
-    ///
-    /// Problem: Complex variational circuits with multiple parameterized layers
-    /// and entangling gates can cause issues if state isolation is not maintained.
-    fn test_3_complex_vqc_layers(&mut self) {
-        println!("\n{}", "=".repeat(70));
-        println!("TEST 3: Complex VQC with Multiple Layers");
-        println!("{}", "=".repeat(70));
-
-        let ansatz = ParameterizedCircuit::new(
-            4,
-            8,
-            move |params| {
-                let mut circuit = Circuit::new(4);
-                // Data embedding layer (simulated with params)
-                for i in 0..4 {
-                    circuit.ry(i, params[i.min(1)]); // Reuse params for embedding
-                }
-                // First parameterized layer
-                circuit.rx(0, params[0]);
-                circuit.rx(1, params[1]);
-                // Entangling layer
-                circuit.cnot(0, 1);
-                circuit.cnot(2, 3);
-                circuit.cnot(0, 2);
-                // Second parameterized layer
-                circuit.ry(0, params[2]);
-                circuit.ry(1, params[3]);
-                // More entanglement
-                circuit.cry(1, 0, params[4]);
-                circuit.cry(3, 2, params[5]);
-                // Final layer
-                circuit.rz(0, params[6]);
-                circuit.rz(1, params[7]);
-                circuit
-            },
-        );
-
-        let mut obs = PauliObservable::new(4);
-        obs.add_term(PauliTerm::new(1.0, vec![Pauli::Z, Pauli::I, Pauli::I, Pauli::I]));
-        obs.add_term(PauliTerm::new(1.0, vec![Pauli::I, Pauli::Z, Pauli::I, Pauli::I]));
-
-        let ps_method = ParameterShift::new();
-        let params: Vec<f64> = (0..8).map(|i| (i as f64) * 0.1).collect();
-
-        println!("  Testing realistic VQC training scenario...");
-        println!("  Parameters: {:?}", params);
-
-        // Forward pass
-        let mut state = State::zero_state(4);
-        ansatz.apply(&mut state, &params);
-        let result = obs.expectation(&state);
-        println!("✓ Forward pass expectation: {:.6}", result);
-
-        // Gradient computation
-        let grad = ps_method.compute_gradient(&ansatz, &obs, &params);
-        println!("✓ Gradient computed: {:?}", grad);
-
-        let has_nan = grad.iter().any(|&g| g.is_nan() || g.is_infinite());
-
-        if has_nan {
-            println!("⚠ ERROR: Gradient contains NaN/Inf!");
-        } else {
-            let grad_magnitude: f64 = grad.iter().map(|g| g * g).sum::<f64>().sqrt();
-            println!("  Gradient magnitude: {:.6}", grad_magnitude);
-
-            if grad_magnitude > 1e6 || grad_magnitude < 1e-10 {
-                println!("⚠ WARNING: Suspicious gradient magnitude: {:.6}", grad_magnitude);
-            }
-
-            // Simulate training step
-            let learning_rate = 0.01;
-            let params_new: Vec<f64> = params
-                .iter()
-                .zip(grad.iter())
-                .map(|(p, g)| p - learning_rate * g)
-                .collect();
-
-            let mut state_new = State::zero_state(4);
-            ansatz.apply(&mut state_new, &params_new);
-            let result_new = obs.expectation(&state_new);
-
-            println!("✓ Training step completed");
-            println!("  New expectation: {:.6}", result_new);
-            println!("  Loss change: {:.6} -> {:.6}", result, result_new);
-        }
-
-        self.results.insert(
-            "test_3".to_string(),
-            if has_nan {
-                "FAILED: NaN detected".to_string()
-            } else {
-                "PASSED".to_string()
-            },
-        );
-    }
-
-    /// BUG TEST 4: Silent NaN errors from edge cases
-    ///
-    /// Problem: Certain parameter values (like π/2, π, very small values)
-    /// can cause numerical issues leading to NaN gradients.
-    fn test_4_silent_nan_errors(&mut self) {
-        println!("\n{}", "=".repeat(70));
-        println!("TEST 4: Silent NaN Errors from Edge Cases");
+        println!("BUG 4: Silent NaN Errors from Edge Cases");
         println!("{}", "=".repeat(70));
 
         let ansatz = ParameterizedCircuit::new(
@@ -529,13 +270,13 @@ impl LogosQGradientBugDemo {
 
         if nan_count > 0 {
             println!("\n⚠ Found {} cases with NaN/Inf or exceptions", nan_count);
-            println!("  This demonstrates potential numerical issues in PSR");
+            println!("  This demonstrates silent errors in PSR gradient computation");
         } else {
             println!("\n✓ All edge cases handled correctly - no NaN detected");
         }
 
         self.results.insert(
-            "test_4".to_string(),
+            "bug_4".to_string(),
             if nan_count > 0 {
                 format!("FAILED: {} NaN cases", nan_count)
             } else {
@@ -544,22 +285,98 @@ impl LogosQGradientBugDemo {
         );
     }
 
-    /// BUG TEST 5: Operation ordering PSR evaluation issues
+    /// BUG 5: Parameter reuse in multiple gates
     ///
-    /// Problem: Different operation orders should give different (but correct)
-    /// gradients. PSR should handle both correctly.
-    fn test_5_operation_ordering(&mut self) {
+    /// Problem: Reusing the same parameter in multiple gates requires PSR to
+    /// correctly sum all contributions from each parameter use. This can cause
+    /// incorrect gradient computation if not handled properly.
+    fn test_bug_5_parameter_reuse_multiple_gates(&mut self) {
         println!("\n{}", "=".repeat(70));
-        println!("TEST 5: Operation Ordering PSR Evaluation Issues");
+        println!("BUG 5: Parameter Reuse in Multiple Gates");
         println!("{}", "=".repeat(70));
 
-        // Two circuits with different operation orders
+        let ansatz = ParameterizedCircuit::new(
+            2,
+            2,
+            move |params| {
+                let mut circuit = Circuit::new(2);
+                circuit.rx(0, params[0]);
+                circuit.ry(1, params[0]);
+                circuit.cnot(0, 1);
+                circuit.rz(0, params[1]);
+                circuit.rx(0, params[0]);
+                circuit.cry(0, 1, params[1]);
+                circuit
+            },
+        );
+
+        let obs = PauliObservable::single_z(2, 0);
+        let ps_method = ParameterShift::new();
+        let fd_method = FiniteDifference::new(1e-7);
+
+        let params = vec![0.5, 0.3];
+
+        println!("\n⚠ PROBLEM: Parameter θ₀ used 3 times, θ₁ used 2 times");
+        println!("   PSR must correctly sum all contributions from each parameter!");
+        println!("{}", "-".repeat(70));
+
+        let ps_grad = ps_method.compute_gradient(&ansatz, &obs, &params);
+        let fd_grad = fd_method.compute_gradient(&ansatz, &obs, &params);
+
+        println!("✓ PSR Gradient computed: {:?}", ps_grad);
+        println!("  Finite-diff gradient: {:?}", fd_grad);
+
+        let ps_has_nan = ps_grad.iter().any(|&g| g.is_nan() || g.is_infinite());
+        let fd_has_nan = fd_grad.iter().any(|&g| g.is_nan() || g.is_infinite());
+
+        if ps_has_nan {
+            println!("⚠ WARNING: PSR gradient contains NaN/Inf!");
+        }
+        if fd_has_nan {
+            println!("⚠ WARNING: Finite-diff gradient contains NaN/Inf!");
+        }
+
+        if ps_grad.len() == fd_grad.len() && !ps_has_nan && !fd_has_nan {
+            let max_diff = ps_grad
+                .iter()
+                .zip(fd_grad.iter())
+                .map(|(p, f)| (p - f).abs())
+                .fold(0.0, f64::max);
+
+            if max_diff > 1e-4 {
+                println!("⚠ WARNING: Gradient mismatch! Max difference: {:.6}", max_diff);
+                println!("  PSR may not be correctly handling parameter reuse");
+            } else {
+                println!("✓ Gradients match within tolerance");
+            }
+        }
+
+        self.results.insert(
+            "bug_5".to_string(),
+            if ps_has_nan || fd_has_nan {
+                "FAILED: NaN detected".to_string()
+            } else {
+                "PASSED".to_string()
+            },
+        );
+    }
+
+    /// BUG 6a: Operation ordering and PSR gradient computation
+    ///
+    /// Problem: Different operation orders produce different circuits (and thus
+    /// different gradients). PSR must correctly compute gradients for each
+    /// circuit structure, especially when entangling gates are interleaved with
+    /// parameterized gates.
+    fn test_bug_6a_operation_ordering(&mut self) {
+        println!("\n{}", "=".repeat(70));
+        println!("BUG 6a: Operation Ordering PSR Evaluation Issues");
+        println!("{}", "=".repeat(70));
+
         let ansatz1 = ParameterizedCircuit::new(
             2,
             2,
             move |params| {
                 let mut circuit = Circuit::new(2);
-                // Order: param -> entangle -> param
                 circuit.ry(0, params[0]);
                 circuit.cnot(0, 1);
                 circuit.rx(1, params[1]);
@@ -572,13 +389,16 @@ impl LogosQGradientBugDemo {
             2,
             move |params| {
                 let mut circuit = Circuit::new(2);
-                // Order: entangle -> param -> param
                 circuit.cnot(0, 1);
                 circuit.ry(0, params[0]);
                 circuit.rx(1, params[1]);
                 circuit
             },
         );
+
+        println!("\n⚠ PROBLEM: Different operation orders produce different circuits");
+        println!("   PSR must correctly compute gradients for each structure!");
+        println!("{}", "-".repeat(70));
 
         let obs = PauliObservable::single_z(2, 0);
         let ps_method = ParameterShift::new();
@@ -622,7 +442,6 @@ impl LogosQGradientBugDemo {
             println!("✓ Circuit 2: PSR matches FD");
         }
 
-        // The gradients should be different due to different operation orders
         let order_diff = grad1_ps
             .iter()
             .zip(grad2_ps.iter())
@@ -630,10 +449,10 @@ impl LogosQGradientBugDemo {
             .fold(0.0, f64::max);
 
         println!("  Gradient difference between orders: {:.6}", order_diff);
-        println!("  (Expected: gradients should differ due to operation order)");
+        println!("  (Expected: gradients differ since circuits differ)");
 
         self.results.insert(
-            "test_5".to_string(),
+            "bug_6a".to_string(),
             if diff1 > 1e-4 || diff2 > 1e-4 {
                 "FAILED: PSR mismatch with FD".to_string()
             } else {
@@ -642,13 +461,13 @@ impl LogosQGradientBugDemo {
         );
     }
 
-    /// BUG TEST 6: Complex training scenario with multiple measurements
+    /// BUG 6: Complex VQC training failure scenarios
     ///
-    /// Problem: VQC with multiple observables/measurements can cause issues
-    /// if gradients aren't computed correctly for each observable term.
-    fn test_6_multiple_measurements(&mut self) {
+    /// Problem: Real-world VQC training scenarios combine multiple issues,
+    /// leading to training failures, wrong gradients, or crashes.
+    fn test_bug_6_complex_vqc_training(&mut self) {
         println!("\n{}", "=".repeat(70));
-        println!("TEST 6: Complex Training Scenario with Multiple Measurements");
+        println!("BUG 6: Complex VQC Training Failure Scenario");
         println!("{}", "=".repeat(70));
 
         let ansatz = ParameterizedCircuit::new(
@@ -656,15 +475,112 @@ impl LogosQGradientBugDemo {
             8,
             move |params| {
                 let mut circuit = Circuit::new(4);
-                // Realistic VQC structure
                 for i in 0..4 {
-                    circuit.ry(i, params[i.min(3)]);
+                    circuit.ry(i, params[i.min(1)]);
                 }
-                // Entangling layer
+                circuit.rx(0, params[0]);
+                circuit.rx(1, params[1]);
                 circuit.cnot(0, 1);
                 circuit.cnot(2, 3);
                 circuit.cnot(0, 2);
-                // Parameterized layers
+                circuit.ry(0, params[2]);
+                circuit.ry(1, params[3]);
+                circuit.cry(1, 0, params[4]);
+                circuit.cry(3, 2, params[5]);
+                circuit.rz(0, params[6]);
+                circuit.rz(1, params[7]);
+                circuit
+            },
+        );
+
+        let mut obs = PauliObservable::new(4);
+        obs.add_term(PauliTerm::new(1.0, vec![Pauli::Z, Pauli::I, Pauli::I, Pauli::I]));
+        obs.add_term(PauliTerm::new(1.0, vec![Pauli::I, Pauli::Z, Pauli::I, Pauli::I]));
+
+        let ps_method = ParameterShift::new();
+        let params: Vec<f64> = (0..8).map(|i| (i as f64) * 0.1).collect();
+
+        println!("\n⚠ PROBLEM: Complex circuit with:");
+        println!("   • Data embedding layer (RY gates)");
+        println!("   • Multiple parameterized layers (RX, RY, RZ)");
+        println!("   • Interleaved entangling gates (CNOT, CRY)");
+        println!("   • Multiple measurements");
+        println!("   All issues from bugs 1-5 can combine here!");
+        println!("{}", "-".repeat(70));
+
+        println!("\n  Testing realistic VQC training scenario...");
+        println!("  Parameters: {:?}", params);
+
+        // Forward pass
+        let mut state = State::zero_state(4);
+        ansatz.apply(&mut state, &params);
+        let result = obs.expectation(&state);
+        println!("✓ Forward pass expectation: {:.6}", result);
+
+        // Gradient computation
+        let grad = ps_method.compute_gradient(&ansatz, &obs, &params);
+        println!("✓ Gradient computed: {:?}", grad);
+
+        let has_nan = grad.iter().any(|&g| g.is_nan() || g.is_infinite());
+
+        if has_nan {
+            println!("⚠ ERROR: Gradient contains NaN/Inf!");
+        } else {
+            let grad_magnitude: f64 = grad.iter().map(|g| g * g).sum::<f64>().sqrt();
+            println!("  Gradient magnitude: {:.6}", grad_magnitude);
+
+            #[allow(clippy::manual_range_contains)]
+            if grad_magnitude > 1e6 || grad_magnitude < 1e-10 {
+                println!("⚠ WARNING: Suspicious gradient magnitude: {:.6}", grad_magnitude);
+            }
+
+            // Simulate training step
+            let learning_rate = 0.01;
+            let params_new: Vec<f64> = params
+                .iter()
+                .zip(grad.iter())
+                .map(|(p, g)| p - learning_rate * g)
+                .collect();
+
+            let mut state_new = State::zero_state(4);
+            ansatz.apply(&mut state_new, &params_new);
+            let result_new = obs.expectation(&state_new);
+
+            println!("✓ Training step completed");
+            println!("  New expectation: {:.6}", result_new);
+            println!("  Loss change: {:.6} -> {:.6}", result, result_new);
+        }
+
+        self.results.insert(
+            "bug_6".to_string(),
+            if has_nan {
+                "FAILED: NaN detected".to_string()
+            } else {
+                "PASSED".to_string()
+            },
+        );
+    }
+
+    /// Additional test: Complex training scenario with multiple measurements
+    ///
+    /// VQC with multiple observables/measurements can cause issues
+    /// if gradients aren't computed correctly for each observable term.
+    fn test_7_multiple_measurements(&mut self) {
+        println!("\n{}", "=".repeat(70));
+        println!("TEST 7: Complex Training Scenario with Multiple Measurements");
+        println!("{}", "=".repeat(70));
+
+        let ansatz = ParameterizedCircuit::new(
+            4,
+            8,
+            move |params| {
+                let mut circuit = Circuit::new(4);
+                for i in 0..4 {
+                    circuit.ry(i, params[i.min(3)]);
+                }
+                circuit.cnot(0, 1);
+                circuit.cnot(2, 3);
+                circuit.cnot(0, 2);
                 circuit.rx(0, params[4]);
                 circuit.rx(1, params[5]);
                 circuit.ry(2, params[6]);
@@ -673,7 +589,6 @@ impl LogosQGradientBugDemo {
             },
         );
 
-        // Hamiltonian with multiple terms
         let mut hamiltonian = PauliObservable::new(4);
         hamiltonian.add_term(PauliTerm::new(0.5, vec![Pauli::Z, Pauli::I, Pauli::I, Pauli::I]));
         hamiltonian.add_term(PauliTerm::new(1.0, vec![Pauli::I, Pauli::Z, Pauli::I, Pauli::I]));
@@ -735,7 +650,7 @@ impl LogosQGradientBugDemo {
         }
 
         self.results.insert(
-            "test_6".to_string(),
+            "test_7".to_string(),
             if has_nan {
                 "FAILED: NaN detected".to_string()
             } else {
@@ -756,15 +671,14 @@ impl LogosQGradientBugDemo {
         println!("  • Compile-time checks: Invalid operations are caught");
         println!("  • No dynamic runtime errors: Rust's type system prevents many bugs");
 
-        // Run all bug tests matching PennyLane's structure
         self.test_bug_1_invalid_generator_operations();
-        self.test_2_entangled_state_handling(); // Bug 2 equivalent
+        // Bug 2 removed - too contrived, Bug 5 already covers parameter reuse comprehensively
         self.test_bug_3_broadcasting_batched_vqc();
-        self.test_4_silent_nan_errors(); // Bug 4 equivalent
-        self.test_1_parameter_reuse(); // Bug 5 equivalent
-        self.test_5_operation_ordering(); // Bug 6a equivalent
-        self.test_3_complex_vqc_layers(); // Bug 6 equivalent
-        self.test_6_multiple_measurements(); // Additional test
+        self.test_bug_4_silent_nan_errors();
+        self.test_bug_5_parameter_reuse_multiple_gates();
+        self.test_bug_6a_operation_ordering();
+        self.test_bug_6_complex_vqc_training();
+        self.test_7_multiple_measurements();
 
         // Summary
         println!("\n{}", "=".repeat(70));

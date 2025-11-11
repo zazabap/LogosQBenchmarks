@@ -4,11 +4,15 @@ Comprehensive demonstration of PennyLane gradient errors related to
 Parameter-Shift Rule (PSR) usage.
 
 This script demonstrates:
-1. Invalid parameter-shift rule usage with non-generator operations
-2. "No-cloning" violations through state reuse across shifts
-3. Broadcasting issues with batched VQCs
+1. Issues with interleaving non-parameterized gates between parameterized gates
+3. Sequential batch processing inconsistencies in VQCs
 4. Silent NaN errors and wrong gradients
-5. Edge cases that cause crashes or incorrect results
+5. Parameter reuse in multiple gates
+6a. Operation ordering and PSR gradient computation
+6. Complex VQC training failure scenarios
+
+Note: Bug 2 (parameter reuse in entangled circuits) was removed as it was
+too contrived. Bug 5 already comprehensively covers parameter reuse.
 """
 
 import pennylane as qml
@@ -41,33 +45,32 @@ class PennyLaneGradientBugDemo:
     
     def bug_1_invalid_generator_operations(self):
         """
-        BUG 1: Invalid parameter-shift rule with non-generator operations
+        BUG 1: Interleaving non-parameterized gates with parameterized gates
         
-        Problem: PSR requires generators (e.g., Pauli rotations), but Python's 
-        dynamism allows non-generator ops like CNOT to be used in parameter 
-        positions, leading to invalid shifts.
+        Problem: When non-parameterized gates (like CNOT) are interleaved between
+        parameterized gates, PSR's parameter dependency tracking may be affected,
+        potentially leading to incorrect gradient computation.
         """
         print("\n" + "="*70)
-        print("BUG 1: Invalid Generator Operations in Parameter Positions")
+        print("BUG 1: Interleaving Non-Parameterized Gates with Parameterized Gates")
         print("="*70)
         
         dev = self.devices['default_psr']
         
         @qml.qnode(dev, diff_method='parameter-shift')
         def circuit_bad(params):
-            """Circuit with invalid parameter usage"""
-            # Valid: Pauli rotation with parameter
+            """Circuit with interleaved non-parameterized gates"""
+            # Parameterized rotation
             qml.RX(params[0], wires=0)
             
-            # PROBLEM: Attempting to use non-generator operations with parameters
-            # This can lead to invalid shifts since CNOT doesn't have a generator
-            # in the same sense as Pauli rotations
+            # Non-parameterized gate interleaved between parameterized gates
+            # This can affect PSR's parameter dependency tracking
             qml.CNOT(wires=[0, 1])
             
-            # Another valid rotation, but now we're mixing valid/invalid
+            # Another parameterized rotation
             qml.RY(params[1], wires=1)
             
-            # More problematic: controlled gate that might not support PSR properly
+            # Controlled rotation (valid generator operation that supports PSR)
             qml.CRY(params[2], wires=[0, 1])
             
             return qml.expval(qml.PauliZ(0))
@@ -78,7 +81,7 @@ class PennyLaneGradientBugDemo:
         print("\n📊 Circuit Visualization:")
         print("-" * 70)
         _ = circuit_bad(params)  # Execute once to build circuit
-        print("\nCircuit Structure (with invalid generator operations):")
+        print("\nCircuit Structure (with interleaved non-parameterized gates):")
         result = qml.draw_mpl(circuit_bad, decimals=3, wire_options={'color':'teal', 'linewidth': 5})(params)
         fig, ax = result if isinstance(result, tuple) else (result, None)
         plt.savefig('circuit_diagrams/bug1_invalid_generator_operations.png', dpi=150, bbox_inches='tight')
@@ -145,126 +148,16 @@ class PennyLaneGradientBugDemo:
         
         self.results['bug_1'] = {'status': 'demonstrated', 'params': params}
     
-    def bug_2_state_reuse_no_cloning(self):
-        """
-        BUG 2: No-cloning violations through state reuse
-        
-        Problem: PSR requires evaluating shifted circuits (+s and -s), but Python's 
-        dynamism allows reusing qubit states across shifts without proper isolation, 
-        leading to incorrect gradient computation.
-        """
-        print("\n" + "="*70)
-        print("BUG 2: No-Cloning Violations - State Reuse Across Shifts")
-        print("="*70)
-        
-        dev = self.devices['default_psr']
-        
-        @qml.qnode(dev, diff_method='parameter-shift')
-        def circuit_state_reuse(params):
-            """
-            Circuit that creates entangled state, then tries to reuse it
-            across parameter shifts - this violates no-cloning principle
-            """
-            # Create entangled state (Bell state)
-            qml.Hadamard(wires=0)
-            qml.CNOT(wires=[0, 1])
-            
-            # Apply parameterized rotation to entangled qubit
-            qml.RY(params[0], wires=0)
-            
-            # PROBLEM: Reusing entangled state for another parameterized operation
-            # In PSR, when computing shifts, the state from first operation 
-            # should be isolated, but Python allows implicit reuse
-            qml.RZ(params[1], wires=0)  # Reusing qubit 0 after entanglement
-            
-            # Another operation that depends on the entangled state
-            qml.RX(params[0], wires=1)  # Same parameter used twice - problematic!
-            
-            return qml.expval(qml.PauliZ(0) @ qml.PauliZ(1))
-        
-        params = np.array([0.5, 0.3])
-        
-        # Visualize the circuit
-        print("\n📊 Circuit Visualization:")
-        print("-" * 70)
-        _ = circuit_state_reuse(params)  # Execute once to build circuit
-        print("\nCircuit Structure (with state reuse - no-cloning violation):")
-        result = qml.draw_mpl(circuit_state_reuse, decimals=3, wire_options={'color':'teal', 'linewidth': 5})(params)
-        fig, ax = result if isinstance(result, tuple) else (result, None)
-        plt.savefig('circuit_diagrams/bug2_state_reuse_no_cloning.png', dpi=150, bbox_inches='tight')
-        plt.close(fig)
-        print("  ✓ Circuit diagram saved to: circuit_diagrams/bug2_state_reuse_no_cloning.png")
-        print("\n⚠ PROBLEM: Creates entangled Bell state, then reuses qubit 0 multiple times")
-        print("   Parameter θ₀ is used twice (RY on qubit 0, RX on qubit 1)")
-        print("   This violates no-cloning principle in PSR shift evaluations!")
-        print("-" * 70)
-        
-        try:
-            # This might work, but computes wrong gradients due to state reuse
-            grad_fn = qml.grad(circuit_state_reuse)
-            grad = grad_fn(params)
-            
-            if isinstance(grad, tuple):
-                grad = np.array(grad)
-            grad = np.array(grad).flatten()
-            
-            print(f"✓ PSR Gradient computed: {grad}")
-            
-            # Check for silent errors
-            if np.any(np.isnan(grad)) or np.any(np.isinf(grad)):
-                print(f"⚠ ERROR: Gradient contains NaN/Inf! {grad}")
-            
-            # Compare with finite difference
-            @qml.qnode(self.devices['default_fd'], diff_method='finite-diff')
-            def circuit_fd(params):
-                qml.Hadamard(wires=0)
-                qml.CNOT(wires=[0, 1])
-                qml.RY(params[0], wires=0)
-                qml.RZ(params[1], wires=0)
-                qml.RX(params[0], wires=1)
-                return qml.expval(qml.PauliZ(0) @ qml.PauliZ(1))
-            
-            grad_fd_fn = qml.grad(circuit_fd)
-            grad_fd = grad_fd_fn(params)
-            if isinstance(grad_fd, tuple):
-                grad_fd = np.array(grad_fd)
-            grad_fd = np.array(grad_fd).flatten()
-            
-            print(f"  Finite-diff gradient: {grad_fd}")
-            
-            if len(grad) == 0:
-                print(f"⚠ WARNING: PSR returned empty gradient! This indicates a bug.")
-            elif len(grad_fd) == 0:
-                print(f"⚠ WARNING: Finite-diff returned empty gradient!")
-            elif len(grad) == len(grad_fd):
-                diff = np.abs(grad - grad_fd)
-                if len(diff) > 0:
-                    max_diff = np.max(diff)
-                    if max_diff > 1e-3:
-                        print(f"⚠ WARNING: Significant gradient mismatch! Max diff: {max_diff}")
-                        print(f"  PSR: {grad}")
-                        print(f"  FD:  {grad_fd}")
-                        print(f"  This indicates incorrect gradient due to state reuse")
-            else:
-                print(f"⚠ WARNING: Gradient shape mismatch!")
-            
-        except Exception as e:
-            print(f"✗ ERROR: {e}")
-            import traceback
-            traceback.print_exc()
-        
-        self.results['bug_2'] = {'status': 'demonstrated'}
-    
     def bug_3_broadcasting_batched_vqc(self):
         """
-        BUG 3: Broadcasting issues with batched VQCs
+        BUG 3: Sequential batch processing issues with VQCs
         
-        Problem: In batched/VQC setups with broadcasting, PSR may fail silently
-        or compute incorrect gradients when parameters are broadcast across
-        multiple circuit evaluations.
+        Problem: When processing batches of data sequentially, PSR may compute
+        inconsistent gradients across different data points, or fail silently
+        when evaluating gradients for multiple inputs.
         """
         print("\n" + "="*70)
-        print("BUG 3: Broadcasting Issues with Batched VQCs")
+        print("BUG 3: Sequential Batch Processing Issues with VQCs")
         print("="*70)
         
         dev = self.devices['default_psr']
@@ -274,7 +167,7 @@ class PennyLaneGradientBugDemo:
         def batched_vqc(params, x):
             """
             VQC that takes both trainable params and data input x
-            Broadcasting can cause issues when x is batched
+            Sequential batch processing can cause gradient inconsistencies
             """
             # Embed data
             qml.RY(x, wires=0)
@@ -293,14 +186,14 @@ class PennyLaneGradientBugDemo:
         print("\n📊 Circuit Visualization:")
         print("-" * 70)
         _ = batched_vqc(params, x=0.5)  # Execute once to build circuit
-        print("\nCircuit Structure (Batched VQC with broadcasting):")
+        print("\nCircuit Structure (VQC for sequential batch processing):")
         result = qml.draw_mpl(batched_vqc, decimals=3, wire_options={'color':'teal', 'linewidth': 5})(params, x=0.5)
         fig, ax = result if isinstance(result, tuple) else (result, None)
         plt.savefig('circuit_diagrams/bug3_broadcasting_batched_vqc.png', dpi=150, bbox_inches='tight')
         plt.close(fig)
         print("  ✓ Circuit diagram saved to: circuit_diagrams/bug3_broadcasting_batched_vqc.png")
         print("\n⚠ PROBLEM: Data embedding (RY(x)) followed by parameterized gates")
-        print("   When x is batched, broadcasting can cause inconsistent gradients!")
+        print("   When processing x values sequentially, gradients may be inconsistent!")
         print("-" * 70)
         
         # Test with single input
@@ -435,13 +328,14 @@ class PennyLaneGradientBugDemo:
     
     def bug_5_parameter_reuse_and_dependencies(self):
         """
-        BUG 5: Parameter reuse and circular dependencies
+        BUG 5: Parameter reuse in multiple gates
         
-        Problem: Reusing the same parameter in multiple gates or creating
-        circular dependencies can cause incorrect gradient computation in PSR.
+        Problem: Reusing the same parameter in multiple gates requires PSR to
+        correctly sum all contributions from each parameter use. This can cause
+        incorrect gradient computation if not handled properly.
         """
         print("\n" + "="*70)
-        print("BUG 5: Parameter Reuse and Circular Dependencies")
+        print("BUG 5: Parameter Reuse in Multiple Gates")
         print("="*70)
         
         dev = self.devices['default_psr']
@@ -449,18 +343,18 @@ class PennyLaneGradientBugDemo:
         @qml.qnode(dev, diff_method='parameter-shift')
         def circuit_param_reuse(params):
             """
-            Circuit that reuses parameters - PSR might not handle this correctly
+            Circuit that reuses parameters multiple times - PSR must sum contributions
             """
             # Reuse same parameter in multiple places
             qml.RX(params[0], wires=0)
             qml.RY(params[0], wires=1)  # Same param reused
             
-            # Create dependency chain
+            # Entangling gate
             qml.CNOT(wires=[0, 1])
             qml.RZ(params[1], wires=0)
-            qml.RX(params[0], wires=0)  # Same param again!
+            qml.RX(params[0], wires=0)  # Same param used again (third time)
             
-            # Complex dependency
+            # Reuse params[1] in controlled rotation
             qml.CRY(params[1], wires=[0, 1])  # Same param as RZ above
             
             return qml.expval(qml.PauliZ(0))
@@ -538,10 +432,11 @@ class PennyLaneGradientBugDemo:
     
     def bug_6a_operation_ordering_psr_issue(self):
         """
-        BUG 6a: Operation ordering causing PSR evaluation errors
+        BUG 6a: Operation ordering and PSR gradient computation
         
-        Problem: The order of operations can cause PSR to evaluate shifted circuits
-        incorrectly, especially when entangling gates are interleaved with
+        Problem: Different operation orders produce different circuits (and thus
+        different gradients). PSR must correctly compute gradients for each
+        circuit structure, especially when entangling gates are interleaved with
         parameterized gates.
         """
         print("\n" + "="*70)
@@ -550,8 +445,9 @@ class PennyLaneGradientBugDemo:
         
         dev = self.devices['default_psr']
         
-        # Two circuits with different operation orders - should give same result
-        # but PSR might compute different gradients
+        # Two circuits with different operation orders - these are different
+        # circuits and should produce different gradients, but PSR must compute
+        # them correctly for each structure
         
         @qml.qnode(dev, diff_method='parameter-shift')
         def circuit_order1(params):
@@ -604,10 +500,10 @@ class PennyLaneGradientBugDemo:
             print(f"✓ Circuit 1 gradient: {grad1}")
             print(f"✓ Circuit 2 gradient: {grad2}")
             
-            # These should be different due to operation order
-            # But check if gradients are computed correctly
+            # These are different circuits, so gradients should be different
+            # But we verify that PSR computes each one correctly
             diff = np.abs(grad1 - grad2)
-            print(f"  Gradient difference: {diff}")
+            print(f"  Gradient difference (expected, since circuits differ): {diff}")
             
             # Verify with finite difference
             @qml.qnode(self.devices['default_fd'], diff_method='finite-diff')
@@ -804,7 +700,7 @@ class PennyLaneGradientBugDemo:
         print("  • Wasted compute resources")
         
         self.bug_1_invalid_generator_operations()
-        self.bug_2_state_reuse_no_cloning()
+        # Bug 2 removed - too contrived, Bug 5 already covers parameter reuse comprehensively
         self.bug_3_broadcasting_batched_vqc()
         self.bug_4_silent_nan_errors()
         self.bug_5_parameter_reuse_and_dependencies()
@@ -817,9 +713,8 @@ class PennyLaneGradientBugDemo:
         print("="*70)
         print(f"Demonstrated {len(self.results)} different categories of gradient bugs")
         print("\nKey Issues Found:")
-        print("  1. Invalid generator operations can lead to wrong gradients")
-        print("  2. State reuse violates no-cloning and causes errors")
-        print("  3. Broadcasting in batched VQCs produces inconsistent results")
+        print("  1. Interleaving non-parameterized gates can affect gradient computation")
+        print("  3. Sequential batch processing can produce inconsistent gradients")
         print("  4. Silent NaN errors from edge cases are not caught")
         print("  5. Parameter reuse can cause incorrect gradient computation")
         print("  6a. Operation ordering can cause PSR evaluation errors")

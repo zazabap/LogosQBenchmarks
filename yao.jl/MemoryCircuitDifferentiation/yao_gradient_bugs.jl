@@ -4,10 +4,14 @@ Parameter-Shift Rule (PSR) usage.
 
 This script demonstrates:
 1. Invalid parameter-shift rule usage with non-generator operations
-2. "No-cloning" violations through state reuse across shifts
 3. Broadcasting issues with batched VQCs
 4. Silent NaN errors and wrong gradients
-5. Edge cases that cause crashes or incorrect results
+5. Parameter reuse and circular dependencies
+6a. Operation ordering causing PSR evaluation errors
+6. Complex VQC training failure scenarios
+
+Note: Bug 2 (no-cloning violations through state reuse) was removed as it was
+too contrived. Bug 5 already comprehensively covers parameter reuse.
 """
 
 # Import only the core Yao modules we need, avoiding YaoPlots which has dependency issues
@@ -154,136 +158,6 @@ function bug_1_invalid_generator_operations(demo::GradientBugDemo)
     end
     
     demo.results["bug_1"] = Dict("status" => "demonstrated", "params" => params)
-end
-
-function bug_2_state_reuse_no_cloning(demo::GradientBugDemo)
-    """
-    BUG 2: No-cloning violations through state reuse
-    
-    Problem: PSR requires evaluating shifted circuits (+s and -s), but Julia's 
-    dynamism allows reusing qubit states across shifts without proper isolation, 
-    leading to incorrect gradient computation.
-    """
-    println("\n" * "="^70)
-    println("BUG 2: No-Cloning Violations - State Reuse Across Shifts")
-    println("="^70)
-    
-    function circuit_state_reuse(params::Vector{Float64})
-        """
-        Circuit that creates entangled state, then tries to reuse it
-        across parameter shifts - this violates no-cloning principle
-        """
-        n = 4
-        reg = zero_state(n)
-        
-        # Build circuit
-        circuit = chain(n,
-            put(1=>H),
-            control(1, 2=>X),
-            put(1=>Ry(params[1])),
-            put(1=>Rz(params[2])),  # Reusing qubit 1 after entanglement
-            put(2=>Rx(params[1]))   # Same parameter used twice - problematic!
-        )
-        
-        # Apply circuit
-        reg = apply!(reg, circuit)
-        
-        # For multiple qubits, measure each separately
-        exp1 = expect(put(n, 1=>Z), reg)
-        exp2 = expect(put(n, 2=>Z), reg)
-        return exp1 * exp2  # Product for correlated measurement
-    end
-    
-    params = [0.5, 0.3]
-    
-    println("\n📊 Circuit Visualization:")
-    println("-"^70)
-    println("\nCircuit Structure (with state reuse - no-cloning violation):")
-    println("  ✓ Circuit diagram would be saved here")
-    println("\n⚠ PROBLEM: Creates entangled Bell state, then reuses qubit 1 multiple times")
-    println("   Parameter θ₀ is used twice (RY on qubit 1, RX on qubit 2)")
-    println("   This violates no-cloning principle in PSR shift evaluations!")
-    println("-"^70)
-    
-    try
-        # This might work, but computes wrong gradients due to state reuse
-        function loss_fn(p)
-            circuit_state_reuse(p)
-        end
-        
-        # Manual parameter shift rule implementation
-        s = π/2
-        grad = zeros(length(params))
-        for i in 1:length(params)
-            params_plus = copy(params)
-            params_plus[i] += s
-            params_minus = copy(params)
-            params_minus[i] -= s
-            grad[i] = (loss_fn(params_plus) - loss_fn(params_minus)) / (2 * sin(s))
-        end
-        
-        println("✓ PSR Gradient computed: $grad")
-        
-        # Check for silent errors
-        if any(isnan, grad) || any(isinf, grad)
-            println("⚠ ERROR: Gradient contains NaN/Inf! $grad")
-        end
-        
-        # Compare with finite difference
-        function circuit_fd(params::Vector{Float64})
-            n = 4
-            reg = zero_state(n)
-            circuit = chain(n,
-                put(1=>H),
-                control(1, 2=>X),
-                put(1=>Ry(params[1])),
-                put(1=>Rz(params[2])),
-                put(2=>Rx(params[1]))
-            )
-            reg = apply!(reg, circuit)
-            # For multiple qubits, measure each separately
-        exp1 = expect(put(n, 1=>Z), reg)
-        exp2 = expect(put(n, 2=>Z), reg)
-        return exp1 * exp2  # Product for correlated measurement
-        end
-        
-        h = 1e-5
-        grad_fd = zeros(length(params))
-        f0 = circuit_fd(params)
-        for i in 1:length(params)
-            params_plus = copy(params)
-            params_plus[i] += h
-            f_plus = circuit_fd(params_plus)
-            grad_fd[i] = (f_plus - f0) / h
-        end
-        
-        println("  Finite-diff gradient: $grad_fd")
-        
-        if length(grad) == 0
-            println("⚠ WARNING: PSR returned empty gradient! This indicates a bug.")
-        elseif length(grad_fd) == 0
-            println("⚠ WARNING: Finite-diff returned empty gradient!")
-        elseif length(grad) == length(grad_fd)
-            diff = abs.(grad .- grad_fd)
-            if length(diff) > 0
-                max_diff = maximum(diff)
-                if max_diff > 1e-3
-                    println("⚠ WARNING: Significant gradient mismatch! Max diff: $max_diff")
-                    println("  PSR: $grad")
-                    println("  FD:  $grad_fd")
-                    println("  This indicates incorrect gradient due to state reuse")
-                end
-            end
-        else
-            println("⚠ WARNING: Gradient shape mismatch!")
-        end
-        
-    catch e
-        println("✗ ERROR: $e")
-        println(stacktrace(catch_backtrace()))
-    end
-    
-    demo.results["bug_2"] = Dict("status" => "demonstrated")
 end
 
 function bug_3_broadcasting_batched_vqc(demo::GradientBugDemo)
@@ -962,7 +836,7 @@ function run_all_demos(demo::GradientBugDemo)
     println("  • Wasted compute resources")
     
     bug_1_invalid_generator_operations(demo)
-    bug_2_state_reuse_no_cloning(demo)
+    # Bug 2 removed - too contrived, Bug 5 already covers parameter reuse comprehensively
     bug_3_broadcasting_batched_vqc(demo)
     bug_4_silent_nan_errors(demo)
     bug_5_parameter_reuse_and_dependencies(demo)
@@ -976,7 +850,6 @@ function run_all_demos(demo::GradientBugDemo)
     println("Demonstrated $(length(demo.results)) different categories of gradient bugs")
     println("\nKey Issues Found:")
     println("  1. Invalid generator operations can lead to wrong gradients")
-    println("  2. State reuse violates no-cloning and causes errors")
     println("  3. Broadcasting in batched VQCs produces inconsistent results")
     println("  4. Silent NaN errors from edge cases are not caught")
     println("  5. Parameter reuse can cause incorrect gradient computation")
