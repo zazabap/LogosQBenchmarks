@@ -179,7 +179,7 @@ impl QFTBenchmark {
         
         // Save JSON results
         if !self.results.is_empty() {
-            let output_file = "/app/rust/qft_benchmark_results.json";
+            let output_file = "/app/logosq/QuantumFourierTransform/qft_benchmark_results.json";
             match File::create(output_file) {
                 Ok(mut file) => {
                     let json = serde_json::to_string_pretty(&self.results).unwrap();
@@ -261,52 +261,13 @@ fn main() {
     
     let mut benchmark = QFTBenchmark::new();
     
-    // Menu for benchmark options
-    println!("🎯 Select benchmark range:");
-    println!("1. Small (1-8 qubits) - Fast test");
-    println!("2. Medium (1-12 qubits) - Moderate test");
-    println!("3. Large (1-16 qubits) - Comprehensive test");
-    println!("4. Custom range");
+    // Standardized benchmark: 1-10 qubits, 5 trials each
+    let min_qubits = 1;
+    let max_qubits = 10;
+    let trials = 5;
     
-    let mut input = String::new();
-    std::io::stdin().read_line(&mut input).expect("Failed to read input");
-    
-    let (min_qubits, max_qubits, trials) = match input.trim() {
-        "1" => {
-            println!("Selected: Small benchmark (1-8 qubits, 5 trials each)");
-            (1, 8, 5)
-        },
-        "2" => {
-            println!("Selected: Medium benchmark (1-12 qubits, 3 trials each)");
-            (1, 12, 3)
-        },
-        "3" => {
-            println!("Selected: Large benchmark (1-16 qubits, 1 trial each)");
-            (1, 16, 1)
-        },
-        "4" => {
-            println!("Enter minimum qubits:");
-            let mut min_input = String::new();
-            std::io::stdin().read_line(&mut min_input).expect("Failed to read input");
-            let min = min_input.trim().parse().unwrap_or(1);
-            
-            println!("Enter maximum qubits:");
-            let mut max_input = String::new();
-            std::io::stdin().read_line(&mut max_input).expect("Failed to read input");
-            let max = max_input.trim().parse().unwrap_or(8);
-            
-            println!("Enter trials per test:");
-            let mut trials_input = String::new();
-            std::io::stdin().read_line(&mut trials_input).expect("Failed to read input");
-            let trials = trials_input.trim().parse().unwrap_or(3);
-            
-            (min, max, trials)
-        },
-        _ => {
-            println!("Invalid choice, using default small range");
-            (1, 8, 3)
-        }
-    };
+    println!("🎯 Running standardized QFT benchmark: {} to {} qubits, {} trials each", 
+             min_qubits, max_qubits, trials);
     
     // Run benchmark
     benchmark.run_benchmark(min_qubits, max_qubits, trials);

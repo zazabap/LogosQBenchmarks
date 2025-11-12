@@ -5,7 +5,6 @@ Parameter-Shift Rule (PSR) usage.
 
 This script demonstrates:
 1. Invalid parameter-shift rule usage with non-generator operations
-3. Broadcasting issues with batched VQCs
 4. Silent NaN errors and wrong gradients
 5. Parameter reuse and circular dependencies
 6a. Operation ordering causing PSR evaluation errors
@@ -277,116 +276,6 @@ class QiskitGradientBugDemo:
         
         self.results['bug_1'] = {'status': 'demonstrated', 'params': params}
     
-    def bug_3_broadcasting_batched_vqc(self):
-        """
-        BUG 3: Broadcasting issues with batched VQCs
-        
-        Problem: In batched/VQC setups with broadcasting, PSR may fail silently
-        or compute incorrect gradients when parameters are broadcast across
-        multiple circuit evaluations.
-        """
-        print("\n" + "="*70)
-        print("BUG 3: Broadcasting Issues with Batched VQCs")
-        print("="*70)
-        
-        # Create parameters
-        theta = [Parameter('θ0'), Parameter('θ1'), Parameter('θ2')]
-        params = np.array([0.1, 0.2, 0.3])
-        
-        # Create a variational quantum circuit
-        def create_vqc(x_param):
-            """VQC that takes both trainable params and data input x"""
-            circuit = QuantumCircuit(4)
-            # Embed data
-            circuit.ry(x_param, 0)
-            
-            # Parameterized layers
-            circuit.ry(theta[0], 0)
-            circuit.rx(theta[1], 1)
-            circuit.cx(0, 1)
-            circuit.rz(theta[2], 0)
-            
-            return circuit
-        
-        # Visualize the circuit
-        print("\n📊 Circuit Visualization:")
-        print("-" * 70)
-        x_val = 0.5
-        circuit = create_vqc(x_val)
-        circuit.measure_all()
-        print("\nCircuit Structure (Batched VQC with broadcasting):")
-        try:
-            circuit.draw(output='mpl', filename='circuit_diagrams/bug3_broadcasting_batched_vqc.png', style='clifford')
-            print("  ✓ Circuit diagram saved to: circuit_diagrams/bug3_broadcasting_batched_vqc.png")
-        except Exception as e:
-            print(f"  ⚠ Could not save diagram: {e}")
-            print(circuit.draw(output='text'))
-        print("\n⚠ PROBLEM: Data embedding (RY(x)) followed by parameterized gates")
-        print("   When x is batched, broadcasting can cause inconsistent gradients!")
-        print("-" * 70)
-        
-        # Test with single input
-        try:
-            circuit_single = create_vqc(x_val)
-            circuit_single.measure_all()
-            
-            from qiskit.quantum_info import SparsePauliOp
-            observable = SparsePauliOp(['ZIII'], coeffs=[1.0])
-            param_dict = dict(zip(theta, params))
-            
-            grad_single = self.compute_psr_gradient(circuit_single, observable, param_dict)
-            print(f"✓ Single input gradient: {grad_single}")
-        except Exception as e:
-            print(f"✗ ERROR with single input: {e}")
-            grad_single = None
-        
-        # Test with batched input - this often causes issues
-        print("\n  Testing with batched input (common source of bugs)...")
-        x_batch = np.array([0.1, 0.2, 0.3, 0.4])
-        
-        try:
-            # This might fail or produce wrong results
-            results = []
-            grads = []
-            for x_val in x_batch:
-                try:
-                    circuit_batch = create_vqc(x_val)
-                    circuit_batch.measure_all()
-                    
-                    param_dict = dict(zip(theta, params))
-                    grad = self.compute_psr_gradient(circuit_batch, observable, param_dict)
-                    grads.append(grad)
-                    
-                    # Compute expectation
-                    bound_circuit = circuit_batch.assign_parameters(dict(zip(theta, params)))
-                    statevector = Statevector.from_instruction(bound_circuit.remove_final_measurements(inplace=False))
-                    from qiskit.quantum_info import SparsePauliOp
-                    observable_z = SparsePauliOp(['ZIII'], coeffs=[1.0])
-                    result = statevector.expectation_value(observable_z)
-                    results.append(result)
-                except Exception as e:
-                    print(f"    ✗ Failed at x={x_val}: {e}")
-                    grads.append(None)
-                    results.append(None)
-            
-            if grads and all(g is not None for g in grads):
-                grads_array = np.array(grads)
-                print(f"  Batch gradients shape: {grads_array.shape}")
-                
-                # Check for inconsistencies
-                grad_std = np.std(grads_array, axis=0)
-                if np.any(grad_std > 1e-6):
-                    print(f"⚠ WARNING: Gradient variance across batch! Std: {grad_std}")
-                    print(f"  This suggests inconsistent gradient computation")
-                
-                # Check for NaN
-                if np.any(np.isnan(grads_array)):
-                    print(f"⚠ ERROR: NaN in batch gradients!")
-            
-        except Exception as e:
-            print(f"✗ ERROR with batched input: {e}")
-        
-        self.results['bug_3'] = {'status': 'demonstrated'}
     
     def bug_4_silent_nan_errors(self):
         """
@@ -820,7 +709,7 @@ class QiskitGradientBugDemo:
         
         self.bug_1_invalid_generator_operations()
         # Bug 2 removed - too contrived, Bug 5 already covers parameter reuse comprehensively
-        self.bug_3_broadcasting_batched_vqc()
+        # Bug 3 removed - gradient variance is expected and correct behavior, not a bug
         self.bug_4_silent_nan_errors()
         self.bug_5_parameter_reuse_and_dependencies()
         self.bug_6a_operation_ordering_psr_issue()
@@ -833,7 +722,6 @@ class QiskitGradientBugDemo:
         print(f"Demonstrated {len(self.results)} different categories of gradient bugs")
         print("\nKey Issues Found:")
         print("  1. Invalid generator operations can lead to wrong gradients")
-        print("  3. Broadcasting in batched VQCs produces inconsistent results")
         print("  4. Silent NaN errors from edge cases are not caught")
         print("  5. Parameter reuse can cause incorrect gradient computation")
         print("  6a. Operation ordering can cause PSR evaluation errors")

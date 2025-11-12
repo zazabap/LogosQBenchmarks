@@ -4,7 +4,6 @@ Parameter-Shift Rule (PSR) usage.
 
 This script demonstrates:
 1. Invalid parameter-shift rule usage with non-generator operations
-3. Broadcasting issues with batched VQCs
 4. Silent NaN errors and wrong gradients
 5. Parameter reuse and circular dependencies
 6a. Operation ordering causing PSR evaluation errors
@@ -25,6 +24,16 @@ import YaoBlocks: put, control, Rx, Ry, Rz, H, X, Y, Z, chain
 import YaoArrayRegister: zero_state, expect, apply!
 using Random  # For random number generation
 
+# Try to use Zygote for automatic differentiation (Yao.jl compatible)
+ZYGOTE_AVAILABLE = false
+try
+    using Zygote
+    global ZYGOTE_AVAILABLE = true
+catch
+    global ZYGOTE_AVAILABLE = false
+    println("ℹ NOTE: Zygote not available, will use parameter-shift rule for gradient computation")
+end
+
 # Create output directory for circuit diagrams
 output_dir = joinpath(@__DIR__, "circuit_diagrams")
 mkpath(output_dir)
@@ -35,6 +44,39 @@ struct GradientBugDemo
     function GradientBugDemo()
         new(Dict{String, Any}())
     end
+end
+
+"""
+Compute gradient using Yao.jl's built-in capabilities or fallback to manual PSR.
+Tries automatic differentiation first, then parameter-shift rule.
+"""
+function compute_gradient(loss_fn::Function, params::Vector{Float64})
+    # Try automatic differentiation with Zygote if available
+    if ZYGOTE_AVAILABLE
+        try
+            # Use Zygote's gradient function
+            grad = Zygote.gradient(loss_fn, params)[1]
+            if grad !== nothing
+                return grad
+            end
+        catch e
+            # If AD fails, fall back to parameter-shift rule
+            # Note: AD may not work well with quantum circuits, PSR is preferred
+        end
+    end
+    
+    # Fallback: Manual parameter-shift rule
+    # For Pauli rotations: ∂f/∂θ = (1/2) * [f(θ + π/2) - f(θ - π/2)]
+    s = π/2
+    grad = zeros(length(params))
+    for i in 1:length(params)
+        params_plus = copy(params)
+        params_plus[i] += s
+        params_minus = copy(params)
+        params_minus[i] -= s
+        grad[i] = (loss_fn(params_plus) - loss_fn(params_minus)) / 2
+    end
+    return grad
 end
 
 function bug_1_invalid_generator_operations(demo::GradientBugDemo)
@@ -160,131 +202,6 @@ function bug_1_invalid_generator_operations(demo::GradientBugDemo)
     demo.results["bug_1"] = Dict("status" => "demonstrated", "params" => params)
 end
 
-function bug_3_broadcasting_batched_vqc(demo::GradientBugDemo)
-    """
-    BUG 3: Broadcasting issues with batched VQCs
-    
-    Problem: In batched/VQC setups with broadcasting, PSR may fail silently
-    or compute incorrect gradients when parameters are broadcast across
-    multiple circuit evaluations.
-    """
-    println("\n" * "="^70)
-    println("BUG 3: Broadcasting Issues with Batched VQCs")
-    println("="^70)
-    
-    # Create a variational quantum circuit
-    function batched_vqc(params::Vector{Float64}, x::Float64)
-        """
-        VQC that takes both trainable params and data input x
-        Broadcasting can cause issues when x is batched
-        """
-        n = 4
-        reg = zero_state(n)
-        
-        # Build circuit
-        circuit = chain(n,
-            put(1=>Ry(x)),
-            put(1=>Ry(params[1])),
-            put(2=>Rx(params[2])),
-            control(1, 2=>X),
-            put(1=>Rz(params[3]))
-        )
-        
-        # Apply circuit
-        reg = apply!(reg, circuit)
-        
-        return expect(put(n, 1=>Z), reg)
-    end
-    
-    params = [0.1, 0.2, 0.3]
-    
-    println("\n📊 Circuit Visualization:")
-    println("-"^70)
-    println("\nCircuit Structure (Batched VQC with broadcasting):")
-    println("  ✓ Circuit diagram would be saved here")
-    println("\n⚠ PROBLEM: Data embedding (RY(x)) followed by parameterized gates")
-    println("   When x is batched, broadcasting can cause inconsistent gradients!")
-    println("-"^70)
-    
-    # Test with single input
-    try
-        function loss_fn_single(p, x_val)
-            batched_vqc(p, x_val)
-        end
-        
-        # Manual parameter shift rule
-        s = π/2
-        grad_single = zeros(length(params))
-        for i in 1:length(params)
-            params_plus = copy(params)
-            params_plus[i] += s
-            params_minus = copy(params)
-            params_minus[i] -= s
-            grad_single[i] = (loss_fn_single(params_plus, 0.5) - loss_fn_single(params_minus, 0.5)) / 2
-        end
-        println("✓ Single input gradient: $grad_single")
-    catch e
-        println("✗ ERROR with single input: $e")
-        grad_single = nothing
-    end
-    
-    # Test with batched input - this often causes issues
-    println("\n  Testing with batched input (common source of bugs)...")
-    x_batch = [0.1, 0.2, 0.3, 0.4]
-    
-    try
-        # This might fail or produce wrong results
-        results = Float64[]
-        grads = Vector{Float64}[]
-        for x_val in x_batch
-            try
-                function loss_fn_batch(p, x_val)
-                    batched_vqc(p, x_val)
-                end
-                
-                # Manual parameter shift rule
-                s = π/2
-                grad = zeros(length(params))
-                for i in 1:length(params)
-                    params_plus = copy(params)
-                    params_plus[i] += s
-                    params_minus = copy(params)
-                    params_minus[i] -= s
-                    grad[i] = (loss_fn_batch(params_plus, x_val) - loss_fn_batch(params_minus, x_val)) / 2
-                end
-                push!(grads, grad)
-                result = batched_vqc(params, x_val)
-                push!(results, result)
-            catch e
-                println("    ✗ Failed at x=$x_val: $e")
-                push!(grads, Float64[])
-                push!(results, NaN)
-            end
-        end
-        
-        if !isempty(grads) && all(!isempty, grads)
-            grads_array = hcat(grads...)'
-            println("  Batch gradients shape: $(size(grads_array))")
-            
-            # Check for inconsistencies
-            grad_std = std(grads_array, dims=1)
-            if any(grad_std .> 1e-6)
-                println("⚠ WARNING: Gradient variance across batch! Std: $grad_std")
-                println("  This suggests inconsistent gradient computation")
-            end
-            
-            # Check for NaN
-            if any(isnan, grads_array)
-                println("⚠ ERROR: NaN in batch gradients!")
-            end
-        end
-        
-    catch e
-        println("✗ ERROR with batched input: $e")
-    end
-    
-    demo.results["bug_3"] = Dict("status" => "demonstrated")
-end
 
 function bug_4_silent_nan_errors(demo::GradientBugDemo)
     """
@@ -341,16 +258,8 @@ function bug_4_silent_nan_errors(demo::GradientBugDemo)
                 circuit_nan_risk(p)
             end
             
-            # Manual parameter shift rule
-            s = π/2
-            grad = zeros(length(params))
-            for i in 1:length(params)
-                params_plus = copy(params)
-                params_plus[i] += s
-                params_minus = copy(params)
-                params_minus[i] -= s
-                grad[i] = (loss_fn(params_plus) - loss_fn(params_minus)) / 2
-            end
+            # Use Yao.jl's built-in gradient computation (tries AD, falls back to PSR)
+            grad = compute_gradient(loss_fn, params)
             
             has_nan = any(isnan, grad) || any(isinf, grad)
             
@@ -837,7 +746,7 @@ function run_all_demos(demo::GradientBugDemo)
     
     bug_1_invalid_generator_operations(demo)
     # Bug 2 removed - too contrived, Bug 5 already covers parameter reuse comprehensively
-    bug_3_broadcasting_batched_vqc(demo)
+    # Bug 3 removed - gradient variance is expected and correct behavior, not a bug
     bug_4_silent_nan_errors(demo)
     bug_5_parameter_reuse_and_dependencies(demo)
     bug_6a_operation_ordering_psr_issue(demo)
@@ -850,7 +759,6 @@ function run_all_demos(demo::GradientBugDemo)
     println("Demonstrated $(length(demo.results)) different categories of gradient bugs")
     println("\nKey Issues Found:")
     println("  1. Invalid generator operations can lead to wrong gradients")
-    println("  3. Broadcasting in batched VQCs produces inconsistent results")
     println("  4. Silent NaN errors from edge cases are not caught")
     println("  5. Parameter reuse can cause incorrect gradient computation")
     println("  6a. Operation ordering can cause PSR evaluation errors")

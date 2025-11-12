@@ -243,7 +243,7 @@ class QFTBenchmark:
         }
         
         # Save to JSON
-        output_file = "/app/python/qft_benchmark_results.json"
+        output_file = "/app/pennylane/QuantumFourierTransform/qft_benchmark_results.json"
         with open(output_file, "w") as f:
             json.dump(report, f, indent=2)
         
@@ -328,33 +328,11 @@ def main():
     """Main benchmarking function"""
     benchmark = QFTBenchmark()
     
-    # Test different ranges based on system capabilities
-    print("Select benchmark range:")
-    print("1. Small (1-8 qubits) - Fast test")
-    print("2. Medium (1-12 qubits) - Moderate test") 
-    print("3. Large (1-16 qubits) - Comprehensive test")
-    print("4. Custom range")
+    # Standardized benchmark: 1-10 qubits, 5 trials each
+    qubit_range = range(1, 11)
+    trials = 5
     
-    choice = input("Enter choice (1-4): ").strip()
-    
-    if choice == "1":
-        qubit_range = range(1, 9)
-        trials = 10
-    elif choice == "2":
-        qubit_range = range(1, 13)
-        trials = 5
-    elif choice == "3":
-        qubit_range = range(1, 17)
-        trials = 3
-    elif choice == "4":
-        start = int(input("Start qubits: "))
-        end = int(input("End qubits: ")) + 1
-        trials = int(input("Trials per test: "))
-        qubit_range = range(start, end)
-    else:
-        print("Invalid choice, using default small range")
-        qubit_range = range(1, 9)
-        trials = 5
+    print("🎯 Running standardized QFT benchmark: 1 to 10 qubits, {} trials each".format(trials))
     
     # Run benchmark
     benchmark.run_comprehensive_benchmark(qubit_range, trials)

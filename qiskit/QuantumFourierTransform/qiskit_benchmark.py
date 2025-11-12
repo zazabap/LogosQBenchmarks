@@ -174,25 +174,18 @@ def main():
     suite_start = time.time()
     results = []
     
-    print("Starting Qiskit benchmarks...", file=sys.stderr)
+    print("Starting Qiskit QFT benchmarks...", file=sys.stderr)
     
-    # Test different qubit sizes
-    qubit_sizes = [4, 6, 8, 10, 12]
+    # Standardized benchmark: 1-10 qubits QFT only
+    qubit_sizes = list(range(1, 11))
     
     for num_qubits in qubit_sizes:
-        if num_qubits <= 14:  # Limit for exponential memory growth
-            print(f"Benchmarking {num_qubits} qubits...", file=sys.stderr)
-            
-            # GHZ state benchmark
-            results.append(benchmark_ghz_state(num_qubits))
-            
-            # Random circuit benchmark
-            gate_count = num_qubits * 10
-            results.append(benchmark_random_circuit(num_qubits, gate_count))
-            
-            # QFT benchmark (only for smaller systems due to complexity)
-            if num_qubits <= 10:
-                results.append(benchmark_qft_circuit(num_qubits))
+        print(f"Benchmarking {num_qubits} qubits QFT...", file=sys.stderr)
+        try:
+            results.append(benchmark_qft_circuit(num_qubits))
+        except Exception as e:
+            print(f"Error benchmarking {num_qubits} qubits: {e}", file=sys.stderr)
+            continue
     
     suite_end = time.time()
     total_time = (suite_end - suite_start) * 1000  # Convert to ms
@@ -209,7 +202,7 @@ def main():
     print(output_json)
     
     # Also save to file for plotting
-    output_file = "/app/python/qiskit_qft_benchmark_results.json"
+    output_file = "/app/qiskit/QuantumFourierTransform/qiskit_qft_benchmark_results.json"
     try:
         with open(output_file, 'w') as f:
             f.write(output_json)
@@ -217,7 +210,7 @@ def main():
     except Exception as e:
         print(f"Warning: Could not save to file: {e}", file=sys.stderr)
     
-    print(f"Qiskit benchmarks completed in {total_time:.2f}ms", file=sys.stderr)
+    print(f"Qiskit QFT benchmarks completed in {total_time:.2f}ms", file=sys.stderr)
 
 if __name__ == "__main__":
     main()

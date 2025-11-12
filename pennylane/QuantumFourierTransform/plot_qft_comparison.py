@@ -1,5 +1,5 @@
 """
-Plot comparison between LogosQ (Rust), PennyLane (Python), and Qiskit (Python) QFT benchmarks.
+Plot comparison between LogosQ (Rust), PennyLane (Python), Qiskit (Python), and Yao.jl (Julia) QFT benchmarks.
 Generates plots for execution time and memory usage comparing all available libraries.
 """
 
@@ -26,19 +26,25 @@ LIBRARIES = {
         'name': 'LogosQ (Rust)',
         'color': '#2E86AB',
         'marker': 'o',
-        'file': '/app/rust/qft_benchmark_results.json'
+        'file': '/app/logosq/QuantumFourierTransform/qft_benchmark_results.json'
     },
     'pennylane': {
         'name': 'PennyLane (Python)',
         'color': '#A23B72',
         'marker': 's',
-        'file': '/app/python/qft_benchmark_results.json'
+        'file': '/app/pennylane/QuantumFourierTransform/qft_benchmark_results.json'
     },
     'qiskit': {
         'name': 'Qiskit (Python)',
         'color': '#F18F01',
         'marker': '^',
-        'file': '/app/python/qiskit_qft_benchmark_results.json'
+        'file': '/app/qiskit/QuantumFourierTransform/qiskit_qft_benchmark_results.json'
+    },
+    'yao': {
+        'name': 'Yao.jl (Julia)',
+        'color': '#C73E1D',
+        'marker': 'D',
+        'file': '/app/yao.jl/QuantumFourierTransform/qft_benchmark_results.json'
     }
 }
 
@@ -95,6 +101,19 @@ def load_qiskit_results(filepath: str) -> List[Dict]:
         print(f"Error parsing Qiskit results: {e}")
         return []
 
+def load_yao_results(filepath: str) -> List[Dict]:
+    """Load Yao.jl (Julia) benchmark results"""
+    try:
+        with open(filepath, 'r') as f:
+            data = json.load(f)
+            # Yao results are already a list of BenchmarkResult (same format as Rust)
+            return data if isinstance(data, list) else data.get('results', [])
+    except FileNotFoundError:
+        return []
+    except json.JSONDecodeError as e:
+        print(f"Error parsing Yao results: {e}")
+        return []
+
 def extract_data(results: List[Dict], source: str) -> Tuple[List[int], List[float], List[float], List[float]]:
     """
     Extract qubit counts, execution times, time std dev, and memory usage.
@@ -136,6 +155,12 @@ def extract_data(results: List[Dict], source: str) -> Tuple[List[int], List[floa
             times.append(result.get('execution_time_ms', 0.0))
             time_stds.append(0.0)  # Qiskit doesn't provide std dev in current format
             memory.append(result.get('memory_usage_mb', 0.0))
+        elif source == 'yao':
+            # Yao format (same as Rust): {n_qubits, execution_time_ms, std_deviation_ms, memory_mb, ...}
+            qubits.append(result['n_qubits'])
+            times.append(result['execution_time_ms'])
+            time_stds.append(result.get('std_deviation_ms', 0.0))
+            memory.append(result.get('memory_mb', 0.0))
     
     return qubits, times, time_stds, memory
 
@@ -221,14 +246,8 @@ def plot_memory_comparison(
     ax.legend(fontsize=10, loc='best')
     ax.grid(True, alpha=0.3)
     
-    # Use log scale if memory values span large range
-    all_memory = []
-    for _, (_, memory) in datasets.items():
-        if memory:
-            all_memory.extend([m for m in memory if m > 0])
-    
-    if all_memory and max(all_memory) / min([m for m in all_memory if m > 0]) > 100:
-        ax.set_yscale('log')
+    # Always use linear scale for memory usage
+    ax.set_yscale('linear')
     
     plt.tight_layout()
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
@@ -315,11 +334,11 @@ def plot_speedup_comparison(
 def main():
     """Main function to generate all comparison plots"""
     print("=" * 70)
-    print("QFT Benchmark Comparison: LogosQ vs PennyLane vs Qiskit")
+    print("QFT Benchmark Comparison: LogosQ vs PennyLane vs Qiskit vs Yao.jl")
     print("=" * 70)
     
     # Output directory
-    output_dir = Path("/app/python/QuantumFourierTransform")
+    output_dir = Path("/app/pennylane/QuantumFourierTransform")
     output_dir.mkdir(parents=True, exist_ok=True)
     
     # Load results from all libraries
@@ -329,7 +348,8 @@ def main():
     loaders = {
         'logosq': load_logosq_results,
         'pennylane': load_pennylane_results,
-        'qiskit': load_qiskit_results
+        'qiskit': load_qiskit_results,
+        'yao': load_yao_results
     }
     
     for lib_id, loader in loaders.items():

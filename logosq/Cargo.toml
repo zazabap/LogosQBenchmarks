@@ -21,3 +21,7 @@ rayon = "1.7"
 nalgebra = "0.32"
 logosq = "0.1.12"
 tqdm = "0.8.0"
+
+[[example]]
+name = "qft_benchmark_simple"
+path = "QuantumFourierTransform/qft_benchmark_simple.rs"

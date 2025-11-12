@@ -5,7 +5,6 @@ Parameter-Shift Rule (PSR) usage.
 
 This script demonstrates:
 1. Issues with interleaving non-parameterized gates between parameterized gates
-3. Sequential batch processing inconsistencies in VQCs
 4. Silent NaN errors and wrong gradients
 5. Parameter reuse in multiple gates
 6a. Operation ordering and PSR gradient computation
@@ -148,99 +147,6 @@ class PennyLaneGradientBugDemo:
         
         self.results['bug_1'] = {'status': 'demonstrated', 'params': params}
     
-    def bug_3_broadcasting_batched_vqc(self):
-        """
-        BUG 3: Sequential batch processing issues with VQCs
-        
-        Problem: When processing batches of data sequentially, PSR may compute
-        inconsistent gradients across different data points, or fail silently
-        when evaluating gradients for multiple inputs.
-        """
-        print("\n" + "="*70)
-        print("BUG 3: Sequential Batch Processing Issues with VQCs")
-        print("="*70)
-        
-        dev = self.devices['default_psr']
-        
-        # Create a variational quantum circuit
-        @qml.qnode(dev, diff_method='parameter-shift')
-        def batched_vqc(params, x):
-            """
-            VQC that takes both trainable params and data input x
-            Sequential batch processing can cause gradient inconsistencies
-            """
-            # Embed data
-            qml.RY(x, wires=0)
-            
-            # Parameterized layers
-            qml.RY(params[0], wires=0)
-            qml.RX(params[1], wires=1)
-            qml.CNOT(wires=[0, 1])
-            qml.RZ(params[2], wires=0)
-            
-            return qml.expval(qml.PauliZ(0))
-        
-        params = np.array([0.1, 0.2, 0.3])
-        
-        # Visualize the circuit
-        print("\n📊 Circuit Visualization:")
-        print("-" * 70)
-        _ = batched_vqc(params, x=0.5)  # Execute once to build circuit
-        print("\nCircuit Structure (VQC for sequential batch processing):")
-        result = qml.draw_mpl(batched_vqc, decimals=3, wire_options={'color':'teal', 'linewidth': 5})(params, x=0.5)
-        fig, ax = result if isinstance(result, tuple) else (result, None)
-        plt.savefig('circuit_diagrams/bug3_broadcasting_batched_vqc.png', dpi=150, bbox_inches='tight')
-        plt.close(fig)
-        print("  ✓ Circuit diagram saved to: circuit_diagrams/bug3_broadcasting_batched_vqc.png")
-        print("\n⚠ PROBLEM: Data embedding (RY(x)) followed by parameterized gates")
-        print("   When processing x values sequentially, gradients may be inconsistent!")
-        print("-" * 70)
-        
-        # Test with single input
-        try:
-            grad_single = qml.grad(batched_vqc, argnum=0)(params, x=0.5)
-            print(f"✓ Single input gradient: {grad_single}")
-        except Exception as e:
-            print(f"✗ ERROR with single input: {e}")
-            grad_single = None
-        
-        # Test with batched input - this often causes issues
-        print("\n  Testing with batched input (common source of bugs)...")
-        x_batch = np.array([0.1, 0.2, 0.3, 0.4])
-        
-        try:
-            # This might fail or produce wrong results
-            results = []
-            grads = []
-            for x_val in x_batch:
-                try:
-                    grad = qml.grad(batched_vqc, argnum=0)(params, x=x_val)
-                    grads.append(grad)
-                    result = batched_vqc(params, x_val)
-                    results.append(result)
-                except Exception as e:
-                    print(f"    ✗ Failed at x={x_val}: {e}")
-                    grads.append(None)
-                    results.append(None)
-            
-            if grads and all(g is not None for g in grads):
-                grads_array = np.array(grads)
-                print(f"  Batch gradients shape: {grads_array.shape}")
-                
-                # Check for inconsistencies
-                grad_std = np.std(grads_array, axis=0)
-                if np.any(grad_std > 1e-6):
-                    print(f"⚠ WARNING: Gradient variance across batch! Std: {grad_std}")
-                    print(f"  This suggests inconsistent gradient computation")
-                
-                # Check for NaN
-                if np.any(np.isnan(grads_array)):
-                    print(f"⚠ ERROR: NaN in batch gradients!")
-            
-        except Exception as e:
-            print(f"✗ ERROR with batched input: {e}")
-        
-        self.results['bug_3'] = {'status': 'demonstrated'}
     
     def bug_4_silent_nan_errors(self):
         """
@@ -701,7 +607,7 @@ class PennyLaneGradientBugDemo:
         
         self.bug_1_invalid_generator_operations()
         # Bug 2 removed - too contrived, Bug 5 already covers parameter reuse comprehensively
-        self.bug_3_broadcasting_batched_vqc()
+        # Bug 3 removed - gradient variance is expected and correct behavior, not a bug
         self.bug_4_silent_nan_errors()
         self.bug_5_parameter_reuse_and_dependencies()
         self.bug_6a_operation_ordering_psr_issue()
@@ -714,7 +620,6 @@ class PennyLaneGradientBugDemo:
         print(f"Demonstrated {len(self.results)} different categories of gradient bugs")
         print("\nKey Issues Found:")
         print("  1. Interleaving non-parameterized gates can affect gradient computation")
-        print("  3. Sequential batch processing can produce inconsistent gradients")
         print("  4. Silent NaN errors from edge cases are not caught")
         print("  5. Parameter reuse can cause incorrect gradient computation")
         print("  6a. Operation ordering can cause PSR evaluation errors")
