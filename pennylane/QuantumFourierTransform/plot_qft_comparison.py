@@ -5,45 +5,93 @@ Generates plots for execution time and memory usage comparing all available libr
 
 import json
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+from matplotlib.patches import Rectangle
 import numpy as np
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 from collections import defaultdict
 
-# Set style for better-looking plots
-try:
-    plt.style.use('seaborn-v0_8-darkgrid')
-except:
-    try:
-        plt.style.use('seaborn-darkgrid')
-    except:
-        plt.style.use('ggplot')
-fig_size = (14, 6)
+# Configure matplotlib for high-quality, stylish plots
+plt.rcParams.update({
+    'font.size': 11,
+    'font.family': 'sans-serif',
+    'font.sans-serif': ['DejaVu Sans', 'Arial', 'Helvetica', 'Liberation Sans'],
+    'axes.labelsize': 13,
+    'axes.titlesize': 15,
+    'axes.titleweight': 'bold',
+    'axes.labelweight': 'bold',
+    'xtick.labelsize': 11,
+    'ytick.labelsize': 11,
+    'legend.fontsize': 11,
+    'legend.framealpha': 0.95,
+    'legend.fancybox': True,
+    'legend.shadow': True,
+    'figure.titlesize': 16,
+    'figure.titleweight': 'bold',
+    'grid.alpha': 0.3,
+    'grid.linewidth': 0.8,
+    'lines.linewidth': 2.5,
+    'lines.markersize': 10,
+    'patch.linewidth': 1.5,
+    'axes.linewidth': 1.2,
+    'axes.spines.top': False,
+    'axes.spines.right': False,
+    'axes.axisbelow': True,
+    'figure.facecolor': 'white',
+    'axes.facecolor': '#FAFAFA',
+    'savefig.facecolor': 'white',
+    'savefig.edgecolor': 'none',
+    'savefig.dpi': 300,
+    'savefig.bbox': 'tight'
+})
 
-# Library configuration
+fig_size = (16, 7)
+
+# Library configuration with enhanced styling
 LIBRARIES = {
     'logosq': {
         'name': 'LogosQ (Rust)',
-        'color': '#2E86AB',
+        'color': '#1E88E5',  # Bright blue
         'marker': 'o',
+        'markeredgecolor': '#0D47A1',
+        'markeredgewidth': 1.5,
+        'linestyle': '-',
+        'linewidth': 2.8,
+        'alpha': 0.9,
         'file': '/app/logosq/QuantumFourierTransform/qft_benchmark_results.json'
     },
     'pennylane': {
         'name': 'PennyLane (Python)',
-        'color': '#A23B72',
+        'color': '#9C27B0',  # Purple
         'marker': 's',
+        'markeredgecolor': '#4A148C',
+        'markeredgewidth': 1.5,
+        'linestyle': '-',
+        'linewidth': 2.8,
+        'alpha': 0.9,
         'file': '/app/pennylane/QuantumFourierTransform/qft_benchmark_results.json'
     },
     'qiskit': {
         'name': 'Qiskit (Python)',
-        'color': '#F18F01',
+        'color': '#FF9800',  # Orange
         'marker': '^',
+        'markeredgecolor': '#E65100',
+        'markeredgewidth': 1.5,
+        'linestyle': '-',
+        'linewidth': 2.8,
+        'alpha': 0.9,
         'file': '/app/qiskit/QuantumFourierTransform/qiskit_qft_benchmark_results.json'
     },
     'yao': {
         'name': 'Yao.jl (Julia)',
-        'color': '#C73E1D',
+        'color': '#E53935',  # Red
         'marker': 'D',
+        'markeredgecolor': '#B71C1C',
+        'markeredgewidth': 1.5,
+        'linestyle': '-',
+        'linewidth': 2.8,
+        'alpha': 0.9,
         'file': '/app/yao.jl/QuantumFourierTransform/qft_benchmark_results.json'
     }
 }
@@ -168,8 +216,10 @@ def plot_execution_time_comparison(
     datasets: Dict[str, Tuple[List[int], List[float], List[float]]],
     output_path: str
 ):
-    """Plot execution time comparison for multiple libraries"""
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=fig_size)
+    """Plot execution time comparison for multiple libraries with enhanced styling"""
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=fig_size, facecolor='white')
+    fig.suptitle('Quantum Fourier Transform - Execution Time Comparison', 
+                 fontsize=17, fontweight='bold', y=1.02)
     
     # Plot 1: Linear scale
     for lib_id, (qubits, times, stds) in datasets.items():
@@ -180,18 +230,29 @@ def plot_execution_time_comparison(
                 yerr=stds if any(stds) else None,
                 label=config['name'],
                 marker=config['marker'],
-                markersize=8,
-                linewidth=2,
-                capsize=5,
+                markersize=11,
+                markeredgecolor=config.get('markeredgecolor', config['color']),
+                markeredgewidth=config.get('markeredgewidth', 1.5),
+                linewidth=config.get('linewidth', 2.8),
+                linestyle=config.get('linestyle', '-'),
+                capsize=6,
+                capthick=2,
+                elinewidth=2,
                 color=config['color'],
-                alpha=0.8
+                alpha=config.get('alpha', 0.9),
+                zorder=3
             )
     
-    ax1.set_xlabel('Number of Qubits', fontsize=12, fontweight='bold')
-    ax1.set_ylabel('Execution Time (ms)', fontsize=12, fontweight='bold')
-    ax1.set_title('QFT Execution Time Comparison (Linear Scale)', fontsize=14, fontweight='bold')
-    ax1.legend(fontsize=10, loc='best')
-    ax1.grid(True, alpha=0.3)
+    ax1.set_xlabel('Number of Qubits', fontsize=13, fontweight='bold', labelpad=10)
+    ax1.set_ylabel('Execution Time (ms)', fontsize=13, fontweight='bold', labelpad=10)
+    ax1.set_title('Linear Scale', fontsize=14, fontweight='bold', pad=15)
+    ax1.legend(loc='upper left', frameon=True, fancybox=True, shadow=True, 
+               fontsize=11, framealpha=0.95, edgecolor='gray', facecolor='white')
+    ax1.grid(True, alpha=0.4, linestyle='--', linewidth=0.8, zorder=0)
+    ax1.set_facecolor('#FAFAFA')
+    ax1.spines['bottom'].set_color('#333333')
+    ax1.spines['left'].set_color('#333333')
+    ax1.tick_params(colors='#333333', width=1.2, length=5)
     
     # Plot 2: Log scale
     for lib_id, (qubits, times, stds) in datasets.items():
@@ -202,30 +263,43 @@ def plot_execution_time_comparison(
                 yerr=stds if any(stds) else None,
                 label=config['name'],
                 marker=config['marker'],
-                markersize=8,
-                linewidth=2,
-                capsize=5,
+                markersize=11,
+                markeredgecolor=config.get('markeredgecolor', config['color']),
+                markeredgewidth=config.get('markeredgewidth', 1.5),
+                linewidth=config.get('linewidth', 2.8),
+                linestyle=config.get('linestyle', '-'),
+                capsize=6,
+                capthick=2,
+                elinewidth=2,
                 color=config['color'],
-                alpha=0.8
+                alpha=config.get('alpha', 0.9),
+                zorder=3
             )
     
-    ax2.set_xlabel('Number of Qubits', fontsize=12, fontweight='bold')
-    ax2.set_ylabel('Execution Time (ms, log scale)', fontsize=12, fontweight='bold')
-    ax2.set_title('QFT Execution Time Comparison (Log Scale)', fontsize=14, fontweight='bold')
+    ax2.set_xlabel('Number of Qubits', fontsize=13, fontweight='bold', labelpad=10)
+    ax2.set_ylabel('Execution Time (ms, log scale)', fontsize=13, fontweight='bold', labelpad=10)
+    ax2.set_title('Logarithmic Scale', fontsize=14, fontweight='bold', pad=15)
     ax2.set_yscale('log')
-    ax2.legend(fontsize=10, loc='best')
-    ax2.grid(True, alpha=0.3, which='both')
+    ax2.legend(loc='upper left', frameon=True, fancybox=True, shadow=True,
+               fontsize=11, framealpha=0.95, edgecolor='gray', facecolor='white')
+    ax2.grid(True, alpha=0.4, linestyle='--', linewidth=0.8, which='both', zorder=0)
+    ax2.set_facecolor('#FAFAFA')
+    ax2.spines['bottom'].set_color('#333333')
+    ax2.spines['left'].set_color('#333333')
+    ax2.tick_params(colors='#333333', width=1.2, length=5)
     
-    plt.tight_layout()
-    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.tight_layout(rect=[0, 0, 1, 0.98])
+    plt.savefig(output_path, dpi=300, bbox_inches='tight', facecolor='white', edgecolor='none')
     print(f"✓ Saved execution time plot to: {output_path}")
 
 def plot_memory_comparison(
     datasets: Dict[str, Tuple[List[int], List[float]]],
     output_path: str
 ):
-    """Plot memory usage comparison for multiple libraries"""
-    fig, ax = plt.subplots(1, 1, figsize=(10, 6))
+    """Plot memory usage comparison for multiple libraries with enhanced styling"""
+    fig, ax = plt.subplots(1, 1, figsize=(12, 7), facecolor='white')
+    fig.suptitle('Quantum Fourier Transform - Memory Usage Comparison', 
+                 fontsize=17, fontweight='bold', y=0.98)
     
     for lib_id, (qubits, memory) in datasets.items():
         if qubits and memory:
@@ -234,23 +308,30 @@ def plot_memory_comparison(
                 qubits, memory,
                 label=config['name'],
                 marker=config['marker'],
-                markersize=8,
-                linewidth=2,
+                markersize=12,
+                markeredgecolor=config.get('markeredgecolor', config['color']),
+                markeredgewidth=config.get('markeredgewidth', 1.5),
+                linewidth=config.get('linewidth', 2.8),
+                linestyle=config.get('linestyle', '-'),
                 color=config['color'],
-                alpha=0.8
+                alpha=config.get('alpha', 0.9),
+                zorder=3
             )
     
-    ax.set_xlabel('Number of Qubits', fontsize=12, fontweight='bold')
-    ax.set_ylabel('Memory Usage (MB)', fontsize=12, fontweight='bold')
-    ax.set_title('QFT Memory Usage Comparison', fontsize=14, fontweight='bold')
-    ax.legend(fontsize=10, loc='best')
-    ax.grid(True, alpha=0.3)
-    
-    # Always use linear scale for memory usage
+    ax.set_xlabel('Number of Qubits', fontsize=13, fontweight='bold', labelpad=10)
+    ax.set_ylabel('Memory Usage (MB)', fontsize=13, fontweight='bold', labelpad=10)
+    ax.set_title('Memory Consumption Across Libraries', fontsize=14, fontweight='bold', pad=15)
+    ax.legend(loc='upper left', frameon=True, fancybox=True, shadow=True,
+              fontsize=11, framealpha=0.95, edgecolor='gray', facecolor='white')
+    ax.grid(True, alpha=0.4, linestyle='--', linewidth=0.8, zorder=0)
     ax.set_yscale('linear')
+    ax.set_facecolor('#FAFAFA')
+    ax.spines['bottom'].set_color('#333333')
+    ax.spines['left'].set_color('#333333')
+    ax.tick_params(colors='#333333', width=1.2, length=5)
     
-    plt.tight_layout()
-    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
+    plt.savefig(output_path, dpi=300, bbox_inches='tight', facecolor='white', edgecolor='none')
     print(f"✓ Saved memory usage plot to: {output_path}")
 
 def plot_speedup_comparison(
@@ -258,7 +339,7 @@ def plot_speedup_comparison(
     baseline_lib: str,
     output_path: str
 ):
-    """Plot speedup ratio compared to a baseline library"""
+    """Plot speedup ratio compared to a baseline library with enhanced styling"""
     if baseline_lib not in datasets:
         print(f"⚠ Baseline library '{baseline_lib}' not found, skipping speedup plot")
         return
@@ -271,9 +352,10 @@ def plot_speedup_comparison(
     # Create a dictionary for quick lookup
     baseline_dict = dict(zip(baseline_qubits, baseline_times))
     
-    fig, ax = plt.subplots(1, 1, figsize=(10, 6))
-    
+    fig, ax = plt.subplots(1, 1, figsize=(12, 7), facecolor='white')
     baseline_name = LIBRARIES[baseline_lib]['name']
+    fig.suptitle(f'Quantum Fourier Transform - Performance Speedup Comparison\n({baseline_name} as Baseline)', 
+                 fontsize=17, fontweight='bold', y=0.98)
     
     for lib_id, (qubits, times) in datasets.items():
         if lib_id == baseline_lib:
@@ -297,38 +379,60 @@ def plot_speedup_comparison(
             ax.plot(
                 speedup_qubits, speedups,
                 marker=config['marker'],
-                markersize=10,
-                linewidth=2.5,
+                markersize=12,
+                markeredgecolor=config.get('markeredgecolor', config['color']),
+                markeredgewidth=config.get('markeredgewidth', 1.5),
+                linewidth=config.get('linewidth', 2.8),
+                linestyle=config.get('linestyle', '-'),
                 color=config['color'],
-                alpha=0.8,
-                label=f"{config['name']} vs {baseline_name}"
+                alpha=config.get('alpha', 0.9),
+                label=f"{config['name']}",
+                zorder=3
             )
             
-            # Add annotations for significant differences
+            # Add annotations for significant differences with better styling
             for q, s in zip(speedup_qubits, speedups):
                 if s > 2.0 or s < 0.5:  # Highlight significant differences
+                    color = '#FF6B6B' if s > 2.0 else '#4ECDC4'
                     ax.annotate(
                         f'{s:.2f}x',
                         (q, s),
-                        xytext=(5, 5),
+                        xytext=(8, 8),
                         textcoords='offset points',
-                        fontsize=8,
-                        bbox=dict(boxstyle='round,pad=0.3', facecolor='yellow', alpha=0.5)
+                        fontsize=10,
+                        fontweight='bold',
+                        bbox=dict(boxstyle='round,pad=0.5', facecolor=color, 
+                                alpha=0.7, edgecolor='white', linewidth=1.5),
+                        color='white',
+                        zorder=4
                     )
     
-    # Add reference line at 1x
-    ax.axhline(y=1.0, color='r', linestyle='--', linewidth=1.5, alpha=0.5, 
-               label=f'{baseline_name} (baseline = 1x)')
+    # Add reference line at 1x with better styling
+    ax.axhline(y=1.0, color='#333333', linestyle='--', linewidth=2.5, 
+               alpha=0.7, zorder=2, label=f'{baseline_name} (baseline = 1x)')
     
-    ax.set_xlabel('Number of Qubits', fontsize=12, fontweight='bold')
-    ax.set_ylabel(f'Speedup Ratio (vs {baseline_name})', fontsize=12, fontweight='bold')
-    ax.set_title(f'QFT Performance Speedup Comparison\n(Ratio > 1 means {baseline_name} is faster)', 
-                 fontsize=14, fontweight='bold')
-    ax.legend(fontsize=9, loc='best')
-    ax.grid(True, alpha=0.3)
+    # Add shaded regions for better/faster performance (after plotting)
+    if ax.lines:  # Check if we have any plots
+        y_min, y_max = ax.get_ylim()
+        # Add shaded regions
+        ax.axhspan(0, 1, alpha=0.08, color='#4CAF50', zorder=0)
+        ax.axhspan(1, y_max, alpha=0.08, color='#F44336', zorder=0)
+        ax.set_ylim(y_min, y_max)  # Restore limits
     
-    plt.tight_layout()
-    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    ax.set_xlabel('Number of Qubits', fontsize=13, fontweight='bold', labelpad=10)
+    ax.set_ylabel(f'Speedup Ratio (vs {baseline_name})', fontsize=13, fontweight='bold', labelpad=10)
+    ax.set_title('Ratio > 1 means baseline is faster | Ratio < 1 means other library is faster', 
+                 fontsize=12, style='italic', pad=10)
+    ax.legend(loc='upper left', frameon=True, fancybox=True, shadow=True,
+              fontsize=11, framealpha=0.95, edgecolor='gray', facecolor='white')
+    ax.grid(True, alpha=0.4, linestyle='--', linewidth=0.8, zorder=1)
+    ax.set_facecolor('#FAFAFA')
+    ax.spines['bottom'].set_color('#333333')
+    ax.spines['left'].set_color('#333333')
+    ax.tick_params(colors='#333333', width=1.2, length=5)
+    
+    plt.tight_layout(rect=[0, 0, 1, 0.94])
+    plt.savefig(output_path, dpi=300, bbox_inches='tight', facecolor='white', edgecolor='none')
     print(f"✓ Saved speedup comparison plot to: {output_path}")
 
 def main():

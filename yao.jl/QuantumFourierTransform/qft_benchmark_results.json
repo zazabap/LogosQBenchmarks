@@ -1,0 +1,92 @@
+[
+  {
+    "execution_time_ms": 0.0010068,
+    "memory_mb": 0.25,
+    "std_deviation_ms": 0.001396179558652826,
+    "state_size": 2,
+    "gate_count": 1,
+    "fidelity": 0.9999999999999996,
+    "n_qubits": 1
+  },
+  {
+    "execution_time_ms": 0.0314166,
+    "memory_mb": 1.125,
+    "std_deviation_ms": 0.023541388681214193,
+    "state_size": 4,
+    "gate_count": 4,
+    "fidelity": 0.9999999999999993,
+    "n_qubits": 2
+  },
+  {
+    "execution_time_ms": 0.029132200000000004,
+    "memory_mb": 0.0,
+    "std_deviation_ms": 0.006258034176960047,
+    "state_size": 8,
+    "gate_count": 7,
+    "fidelity": 0.9999999999999991,
+    "n_qubits": 3
+  },
+  {
+    "execution_time_ms": 0.0540528,
+    "memory_mb": 0.125,
+    "std_deviation_ms": 0.006814423098105957,
+    "state_size": 16,
+    "gate_count": 12,
+    "fidelity": 0.9999999999999987,
+    "n_qubits": 4
+  },
+  {
+    "execution_time_ms": 0.0825294,
+    "memory_mb": 0.125,
+    "std_deviation_ms": 0.0027057354342211667,
+    "state_size": 32,
+    "gate_count": 17,
+    "fidelity": 0.9999999999999984,
+    "n_qubits": 5
+  },
+  {
+    "execution_time_ms": 0.20184259999999998,
+    "memory_mb": 18.375,
+    "std_deviation_ms": 0.04753845610702981,
+    "state_size": 64,
+    "gate_count": 24,
+    "fidelity": 0.999999999999998,
+    "n_qubits": 6
+  },
+  {
+    "execution_time_ms": 0.1780682,
+    "memory_mb": 11.75,
+    "std_deviation_ms": 0.0041927919767143305,
+    "state_size": 128,
+    "gate_count": 31,
+    "fidelity": 0.9999999999999978,
+    "n_qubits": 7
+  },
+  {
+    "execution_time_ms": 0.24714139999999998,
+    "memory_mb": 0.0,
+    "std_deviation_ms": 0.004553667559231794,
+    "state_size": 256,
+    "gate_count": 40,
+    "fidelity": 0.9999999999999976,
+    "n_qubits": 8
+  },
+  {
+    "execution_time_ms": 0.350815,
+    "memory_mb": 0.0,
+    "std_deviation_ms": 0.018667544273417443,
+    "state_size": 512,
+    "gate_count": 49,
+    "fidelity": 0.9999999999999971,
+    "n_qubits": 9
+  },
+  {
+    "execution_time_ms": 0.497971,
+    "memory_mb": 0.0,
+    "std_deviation_ms": 0.008409209879649817,
+    "state_size": 1024,
+    "gate_count": 60,
+    "fidelity": 0.9999999999999969,
+    "n_qubits": 10
+  }
+]

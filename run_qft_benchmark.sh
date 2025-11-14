@@ -150,7 +150,7 @@ if command -v julia &> /dev/null; then
         end
     ' > /tmp/yao_deps.log 2>&1 || true
     
-    # Try to precompile Yao specifically
+    # Try to precompile Yao specifically (with workaround for circular dependency)
     echo "Precompiling Yao..."
     julia --project=/app/yao.jl -e '
         using Pkg
@@ -158,14 +158,20 @@ if command -v julia &> /dev/null; then
         Pkg.resolve()
         Pkg.instantiate()
         try
+            # Work around circular dependency by loading in correct order
+            using YaoBlocks
+            using YaoPlots
             using Yao
-            println("Yao precompiled successfully")
+            println("Yao loaded successfully")
         catch e
-            println("Yao precompilation error: ", e)
+            println("Yao loading error: ", e)
             # Try to rebuild after ensuring manifest is synced
             Pkg.resolve()
             Pkg.instantiate()
             Pkg.build("Yao")
+            # Try again with explicit order
+            using YaoBlocks
+            using YaoPlots
             using Yao
             println("Yao rebuilt and loaded successfully")
         end
@@ -174,16 +180,24 @@ if command -v julia &> /dev/null; then
     cd /app/yao.jl/QuantumFourierTransform
     
     # Run with project environment activated
+    # Try without --compiled-modules=no first (faster), fall back if needed
     if julia --project=/app/yao.jl yao_qft_benchmark.jl > /tmp/yao_qft_benchmark.log 2>&1; then
         print_status "SUCCESS" "Yao.jl benchmark completed"
         SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
     else
-        print_status "FAIL" "Yao.jl benchmark failed (check /tmp/yao_qft_benchmark.log)"
-        echo "Last 30 lines of error log:"
-        cat /tmp/yao_qft_benchmark.log | tail -30
-        echo ""
-        echo "Dependency installation log:"
-        cat /tmp/yao_deps.log | tail -20
+        # If it failed, try with --compiled-modules=no to work around circular dependency
+        echo "First attempt failed, trying with --compiled-modules=no to work around circular dependency..."
+        if julia --project=/app/yao.jl --compiled-modules=no yao_qft_benchmark.jl > /tmp/yao_qft_benchmark.log 2>&1; then
+            print_status "SUCCESS" "Yao.jl benchmark completed (with --compiled-modules=no)"
+            SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
+        else
+            print_status "FAIL" "Yao.jl benchmark failed (check /tmp/yao_qft_benchmark.log)"
+            echo "Last 30 lines of error log:"
+            cat /tmp/yao_qft_benchmark.log | tail -30
+            echo ""
+            echo "Dependency installation log:"
+            cat /tmp/yao_deps.log | tail -20
+        fi
     fi
 else
     print_status "SKIP" "Julia not available, skipping Yao.jl benchmark"
