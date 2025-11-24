@@ -423,7 +423,7 @@ def plot_speedup_comparison(
     ax.set_ylabel(f'Speedup Ratio (vs {baseline_name})', fontsize=13, fontweight='bold', labelpad=10)
     ax.set_title('Ratio > 1 means baseline is faster | Ratio < 1 means other library is faster', 
                  fontsize=12, style='italic', pad=10)
-    ax.legend(loc='upper left', frameon=True, fancybox=True, shadow=True,
+    ax.legend(loc='upper right', frameon=True, fancybox=True, shadow=True,
               fontsize=11, framealpha=0.95, edgecolor='gray', facecolor='white')
     ax.grid(True, alpha=0.4, linestyle='--', linewidth=0.8, zorder=1)
     ax.set_facecolor('#FAFAFA')
