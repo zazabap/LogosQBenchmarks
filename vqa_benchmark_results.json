@@ -1,0 +1,42 @@
+[
+  {
+    "framework": "LogosQ (Rust)",
+    "exact_energy": 0.7524008629,
+    "vqe_energy": -1.7929164013,
+    "energy_error": 2.5453172642,
+    "iterations": 309,
+    "runtime_ms": 692.65,
+    "parameters": 12,
+    "converged": true
+  },
+  {
+    "framework": "Qiskit (Python)",
+    "exact_energy": -1.7929182422820198,
+    "vqe_energy": -1.7921398630627745,
+    "energy_error": 0.0007783792192452843,
+    "iterations": 350,
+    "runtime_ms": 442.95,
+    "parameters": 16,
+    "converged": false
+  },
+  {
+    "framework": "PennyLane (Python)",
+    "exact_energy": -1.7929182422820198,
+    "vqe_energy": -1.7928464163704074,
+    "energy_error": 7.182591161236651e-05,
+    "iterations": 350,
+    "runtime_ms": 10416.13,
+    "parameters": 12,
+    "converged": false
+  },
+  {
+    "iterations": 350,
+    "runtime_ms": 739.46,
+    "parameters": 12,
+    "vqe_energy": -1.7928002395058644,
+    "converged": false,
+    "exact_energy": -1.7929182422820198,
+    "framework": "Yao.jl (Julia)",
+    "energy_error": 0.00011800277615536814
+  }
+]
