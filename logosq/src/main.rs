@@ -56,7 +56,9 @@ fn benchmark_ghz_state(num_qubits: usize) -> BenchmarkResult {
         circuit.cnot(0, i);
     }
     
-    circuit.execute(&mut state);
+    circuit
+        .execute(&mut state)
+        .expect("Failed to execute GHZ circuit");
     
     let execution_time = start_time.elapsed();
     let end_memory = get_memory_usage();
@@ -106,7 +108,9 @@ fn benchmark_random_circuit(num_qubits: usize, num_gates: usize) -> BenchmarkRes
         circuit.cnot(control, target);
     }
     
-    circuit.execute(&mut state);
+    circuit
+        .execute(&mut state)
+        .expect("Failed to execute random circuit");
     
     let execution_time = start_time.elapsed();
     let end_memory = get_memory_usage();
@@ -140,7 +144,9 @@ fn benchmark_qft_circuit(num_qubits: usize) -> BenchmarkResult {
         }
     }
     
-    circuit.execute(&mut state);
+    circuit
+        .execute(&mut state)
+        .expect("Failed to execute QFT circuit");
     
     let execution_time = start_time.elapsed();
     let end_memory = get_memory_usage();

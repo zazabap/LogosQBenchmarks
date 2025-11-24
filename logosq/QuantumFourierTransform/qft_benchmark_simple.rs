@@ -83,7 +83,9 @@ impl QFTBenchmark {
         let mut state = State::zero_state(n_qubits);
         let mut circuit = Circuit::new(n_qubits);
         circuit.x(0);
-        circuit.execute(&mut state);
+        circuit
+            .execute(&mut state)
+            .expect("Failed to execute warm-up circuit");
         qft::apply(&mut state);
         
         // Run benchmark trials
@@ -93,7 +95,9 @@ impl QFTBenchmark {
             let mut state = State::zero_state(n_qubits);
             let mut circuit = Circuit::new(n_qubits);
             circuit.x(0);
-            circuit.execute(&mut state);
+            circuit
+                .execute(&mut state)
+                .expect("Failed to execute benchmark circuit");
             
             // Time the QFT application
             let start = Instant::now();
@@ -114,7 +118,9 @@ impl QFTBenchmark {
             let mut state = State::zero_state(n_qubits);
             let mut circuit = Circuit::new(n_qubits);
             circuit.x(0);
-            circuit.execute(&mut state);
+            circuit
+                .execute(&mut state)
+                .expect("Failed to execute fidelity circuit");
             
             qft::apply(&mut state);
             qft::apply_inverse(&mut state);
