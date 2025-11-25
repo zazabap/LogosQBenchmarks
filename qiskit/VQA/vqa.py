@@ -19,7 +19,8 @@ from dataclasses import dataclass
 from typing import List, Sequence, Tuple
 
 import numpy as np
-from qiskit.circuit.library import real_amplitudes
+from qiskit import QuantumCircuit
+from qiskit.circuit import Parameter
 from qiskit.quantum_info import SparsePauliOp, Statevector
 from scipy.optimize import minimize
 
@@ -84,36 +85,92 @@ def compute_exact_ground_state_energy(hamiltonian: SparsePauliOp) -> float:
     return float(np.min(eigenvalues).real)
 
 
-def evaluate_energy(params: np.ndarray, circuit, h_matrix: np.ndarray) -> float:
-    """Return ⟨ψ(θ)|H|ψ(θ)⟩ for the given parameter vector."""
-    bound = circuit.assign_parameters(params, inplace=False)
-    state = Statevector.from_instruction(bound)
-    amplitudes = state.data
-    return float(np.real(np.vdot(amplitudes, h_matrix @ amplitudes)))
 
 
-def run_qiskit_vqe(hamiltonian: SparsePauliOp, exact_energy: float) -> dict:
-    """Execute a VQE with a hardware-efficient ansatz and COBYLA optimizer."""
+def build_hardware_efficient_ansatz(num_qubits: int, reps: int = 3):
+    """Build hardware-efficient ansatz: RY rotations + linear CNOT entanglement."""
+    circuit = QuantumCircuit(num_qubits)
+    params = []
+    
+    for layer in range(reps):
+        layer_params = []
+        for qubit in range(num_qubits):
+            param = Parameter(f"θ_{layer}_{qubit}")
+            layer_params.append(param)
+            circuit.ry(param, qubit)
+        params.extend(layer_params)
+        
+        # Linear CNOT entanglement
+        for control in range(num_qubits - 1):
+            circuit.cx(control, control + 1)
+    
+    return circuit, params
+
+
+def run_qiskit_vqe(hamiltonian: SparsePauliOp, exact_energy: float, reps: int = 3) -> dict:
+    """Execute a VQE with a hardware-efficient ansatz and Adam optimizer."""
     num_qubits = hamiltonian.num_qubits
-    ansatz = real_amplitudes(num_qubits=num_qubits, entanglement="linear", reps=3)
-    parameter_count = ansatz.num_parameters
+    ansatz, param_list = build_hardware_efficient_ansatz(num_qubits, reps=reps)
+    parameter_count = len(param_list)  # Should be reps * num_qubits
     h_matrix = hamiltonian.to_matrix()
+    
+    # Store parameter order for evaluation
+    param_order = list(ansatz.parameters)
 
     def objective(theta: Sequence[float]) -> float:
-        return evaluate_energy(np.asarray(theta), ansatz, h_matrix)
+        param_dict = {param: val for param, val in zip(param_order, theta)}
+        bound = ansatz.assign_parameters(param_dict, inplace=False)
+        state = Statevector.from_instruction(bound)
+        amplitudes = state.data
+        return float(np.real(np.vdot(amplitudes, h_matrix @ amplitudes)))
 
+    # Adam optimizer implementation
     rng = np.random.default_rng(seed=1337)
     initial_point = 2 * math.pi * rng.random(size=parameter_count)
-
+    
+    # Adam optimizer parameters
+    lr = 0.01
+    beta1, beta2 = 0.9, 0.999
+    epsilon = 1e-8
+    max_iterations = 350
+    tolerance = 1e-7
+    
+    # Adam state
+    m = np.zeros(parameter_count)
+    v = np.zeros(parameter_count)
+    params = initial_point.copy()
+    
     start = time.perf_counter()
-    res = minimize(
-        fun=objective,
-        x0=initial_point,
-        method="COBYLA",
-        options={"maxiter": 350, "rhobeg": 0.1, "tol": 1e-7},
-    )
-    optimal_energy = float(res.fun)
-    num_iters = int(res.nfev)
+    iterations = 0
+    converged = False
+    
+    for t in range(1, max_iterations + 1):
+        # Compute gradient using parameter-shift rule (for RY gates: shift = π/2)
+        grad = np.zeros(parameter_count)
+        shift = math.pi / 2
+        for i in range(parameter_count):
+            params_plus = params.copy()
+            params_plus[i] += shift
+            params_minus = params.copy()
+            params_minus[i] -= shift
+            grad[i] = 0.5 * (objective(params_plus) - objective(params_minus))
+        
+        # Adam update
+        m = beta1 * m + (1 - beta1) * grad
+        v = beta2 * v + (1 - beta2) * (grad ** 2)
+        m_hat = m / (1 - beta1 ** t)
+        v_hat = v / (1 - beta2 ** t)
+        params = params - lr * m_hat / (np.sqrt(v_hat) + epsilon)
+        
+        energy = objective(params)
+        iterations = t
+        
+        # Check convergence
+        if np.linalg.norm(grad) < tolerance:
+            converged = True
+            break
+    
+    optimal_energy = objective(params)
     runtime_ms = (time.perf_counter() - start) * 1e3
 
     return {
@@ -121,10 +178,10 @@ def run_qiskit_vqe(hamiltonian: SparsePauliOp, exact_energy: float) -> dict:
         "exact_energy": float(exact_energy),
         "vqe_energy": optimal_energy,
         "energy_error": abs(optimal_energy - exact_energy),
-        "iterations": num_iters,
+        "iterations": iterations,
         "runtime_ms": round(runtime_ms, 2),
-        "parameters": int(parameter_count),
-        "converged": bool(res.success),
+        "parameters": parameter_count,
+        "converged": converged,
     }
 
 
@@ -147,7 +204,11 @@ def main() -> None:
     import os
     hamiltonian = create_h2_hamiltonian()
     exact_energy = compute_exact_ground_state_energy(hamiltonian)
-    result = run_qiskit_vqe(hamiltonian, exact_energy)
+    
+    # Get number of layers from environment variable (default: 3 for 12 parameters)
+    reps = int(os.environ.get("VQA_LAYERS", "3"))
+    
+    result = run_qiskit_vqe(hamiltonian, exact_energy, reps=reps)
     
     # Write to JSON file
     output_file = os.environ.get("VQA_OUTPUT_FILE", "qiskit_vqa_result.json")

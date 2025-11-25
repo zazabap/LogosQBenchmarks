@@ -23,7 +23,7 @@ using YaoArrayRegister
 import YaoBlocks: chain, control, put, Ry, X
 
 const NUM_QUBITS = 4
-const LAYERS = 3
+const DEFAULT_LAYERS = 3
 
 const PAULI_MATRICES = Dict(
     'I' => Matrix{ComplexF64}(I, 2, 2),
@@ -109,13 +109,13 @@ function compute_exact_ground_state_energy(matrix::Matrix{ComplexF64})
     return minimum(real.(eigenvalues))
 end
 
-function hardware_efficient_ansatz(params::AbstractVector{<:Real})
-    expected_length = NUM_QUBITS * LAYERS
+function hardware_efficient_ansatz(params::AbstractVector{<:Real}, layers::Int)
+    expected_length = NUM_QUBITS * layers
     @assert length(params) == expected_length "Expected $expected_length params, got $(length(params))"
 
     ops = Any[]
     idx = 1
-    for _ in 1:LAYERS
+    for _ in 1:layers
         for wire in 1:NUM_QUBITS
             push!(ops, put(NUM_QUBITS, wire => Ry(params[idx])))
             idx += 1
@@ -127,15 +127,15 @@ function hardware_efficient_ansatz(params::AbstractVector{<:Real})
     return chain(NUM_QUBITS, ops...)
 end
 
-function statevector(params::AbstractVector{<:Real})
-    circuit = hardware_efficient_ansatz(params)
+function statevector(params::AbstractVector{<:Real}, layers::Int)
+    circuit = hardware_efficient_ansatz(params, layers)
     reg = zero_state(NUM_QUBITS)
     reg = apply!(reg, circuit)
     return vec(reg.state)
 end
 
-function expectation_energy(params::AbstractVector{<:Real}, h_matrix::Matrix{ComplexF64})
-    ψ = statevector(params)
+function expectation_energy(params::AbstractVector{<:Real}, h_matrix::Matrix{ComplexF64}, layers::Int)
+    ψ = statevector(params, layers)
     return real(dot(ψ, h_matrix * ψ))
 end
 
@@ -154,17 +154,17 @@ function parameter_shift_gradient(cost_fn::Function, params::Vector{Float64})
     return grad
 end
 
-function run_yao_vqe(h_matrix::Matrix{ComplexF64}, exact_energy::Float64)
+function run_yao_vqe(h_matrix::Matrix{ComplexF64}, exact_energy::Float64, layers::Int = DEFAULT_LAYERS)
     Random.seed!(1337)
-    param_count = NUM_QUBITS * LAYERS
+    param_count = NUM_QUBITS * layers
     params = 2π .* rand(param_count)
-    cost_fn = θ -> expectation_energy(θ, h_matrix)
+    cost_fn = θ -> expectation_energy(θ, h_matrix, layers)
 
     lr = 0.01
     β1, β2 = 0.9, 0.999
     ε = 1e-8
     max_iters = 350
-    tolerance = 1e-6
+    tolerance = 1e-7
 
     m = zeros(param_count)
     v = zeros(param_count)
@@ -231,12 +231,16 @@ function main()
     terms = create_h2_hamiltonian_terms()
     h_matrix = build_hamiltonian_matrix(terms)
     exact_energy = compute_exact_ground_state_energy(h_matrix)
-    result = run_yao_vqe(h_matrix, exact_energy)
+    
+    # Get number of layers from environment variable (default: 3 for 12 parameters)
+    layers = parse(Int, get(ENV, "VQA_LAYERS", "3"))
+    
+    result = run_yao_vqe(h_matrix, exact_energy, layers)
     
     # Write to JSON file
     output_file = get(ENV, "VQA_OUTPUT_FILE", "yao_vqa_result.json")
     open(output_file, "w") do f
-        JSON.print(f, result, 2)
+        JSON.print(f, result)
     end
 end
 

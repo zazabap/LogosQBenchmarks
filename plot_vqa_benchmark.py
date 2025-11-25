@@ -1,6 +1,7 @@
 """
-Plot comparison between LogosQ (Rust), PennyLane (Python), Qiskit (Python), and Yao.jl (Julia) VQE benchmarks.
-Generates plots for energy error, runtime, and iterations comparing all available libraries.
+Plot VQE parameter sweep results across LogosQ (Rust), PennyLane (Python),
+Qiskit (Python), and Yao.jl (Julia).
+Generates performance plots vs number of ansatz parameters.
 """
 
 import json
@@ -65,204 +66,127 @@ def load_results(json_path: Path) -> List[Dict]:
         return json.load(f)
 
 
-def plot_energy_comparison(results: List[Dict], output_dir: Path):
-    """Plot energy error comparison."""
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
-
-    frameworks = [r['framework'] for r in results]
-    energies = [r['vqe_energy'] for r in results]
-    exact_energy = results[0]['exact_energy']  # All should have same exact energy
-    energy_errors = [r['energy_error'] for r in results]
-
-    # Plot 1: VQE Energy vs Exact Energy
-    x_pos = np.arange(len(frameworks))
-    colors = [FRAMEWORK_COLORS.get(f, '#666666') for f in frameworks]
+def plot_parameter_sweep(results: List[Dict], output_dir: Path):
+    """Plot VQE performance vs number of parameters."""
+    # Group results by framework
+    frameworks = {}
+    for r in results:
+        fw = r['framework']
+        if fw not in frameworks:
+            frameworks[fw] = []
+        frameworks[fw].append(r)
     
-    bars1 = ax1.bar(x_pos, energies, color=colors, alpha=0.7, edgecolor='black', linewidth=1.5)
-    ax1.axhline(y=exact_energy, color='red', linestyle='--', linewidth=2, label=f'Exact Energy ({exact_energy:.6f} Ha)')
-    ax1.set_xlabel('Framework', fontweight='bold')
-    ax1.set_ylabel('Energy (Ha)', fontweight='bold')
-    ax1.set_title('VQE Ground State Energy', fontweight='bold', fontsize=15)
-    ax1.set_xticks(x_pos)
-    ax1.set_xticklabels(frameworks, rotation=15, ha='right')
-    ax1.legend()
-    ax1.grid(True, alpha=0.3, linestyle='--')
+    # Sort by parameter count for each framework
+    for fw in frameworks:
+        frameworks[fw].sort(key=lambda x: x['parameters'])
     
-    # Add value labels on bars
-    for i, (bar, energy) in enumerate(zip(bars1, energies)):
-        height = bar.get_height()
-        ax1.text(bar.get_x() + bar.get_width()/2., height,
-                f'{energy:.6f}',
-                ha='center', va='bottom', fontsize=9, fontweight='bold')
-
-    # Plot 2: Energy Error (log scale)
-    bars2 = ax2.bar(x_pos, energy_errors, color=colors, alpha=0.7, edgecolor='black', linewidth=1.5)
-    ax2.set_xlabel('Framework', fontweight='bold')
-    ax2.set_ylabel('Energy Error |E - E_exact| (Ha)', fontweight='bold')
-    ax2.set_title('Energy Error (Lower is Better)', fontweight='bold', fontsize=15)
-    ax2.set_xticks(x_pos)
-    ax2.set_xticklabels(frameworks, rotation=15, ha='right')
-    ax2.set_yscale('log')
-    ax2.grid(True, alpha=0.3, linestyle='--', which='both')
+    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(16, 12))
     
-    # Add value labels on bars
-    for i, (bar, error) in enumerate(zip(bars2, energy_errors)):
-        height = bar.get_height()
-        ax2.text(bar.get_x() + bar.get_width()/2., height,
-                f'{error:.2e}',
-                ha='center', va='bottom', fontsize=9, fontweight='bold')
-
-    plt.tight_layout()
-    output_path = output_dir / 'vqa_energy_comparison.png'
-    plt.savefig(output_path)
-    print(f"Saved energy comparison plot to: {output_path}")
-    plt.close()
-
-
-def plot_runtime_comparison(results: List[Dict], output_dir: Path):
-    """Plot runtime comparison."""
-    fig, ax = plt.subplots(1, 1, figsize=(10, 6))
-
-    frameworks = [r['framework'] for r in results]
-    runtimes = [r['runtime_ms'] for r in results]
-    x_pos = np.arange(len(frameworks))
-    colors = [FRAMEWORK_COLORS.get(f, '#666666') for f in frameworks]
-
-    bars = ax.bar(x_pos, runtimes, color=colors, alpha=0.7, edgecolor='black', linewidth=1.5)
-    ax.set_xlabel('Framework', fontweight='bold')
-    ax.set_ylabel('Runtime (ms)', fontweight='bold')
-    ax.set_title('VQE Runtime Comparison (Lower is Better)', fontweight='bold', fontsize=15)
-    ax.set_xticks(x_pos)
-    ax.set_xticklabels(frameworks, rotation=15, ha='right')
-    ax.grid(True, alpha=0.3, linestyle='--', axis='y')
-
-    # Add value labels on bars
-    for bar, runtime in zip(bars, runtimes):
-        height = bar.get_height()
-        ax.text(bar.get_x() + bar.get_width()/2., height,
-                f'{runtime:.1f}',
-                ha='center', va='bottom', fontsize=10, fontweight='bold')
-
-    plt.tight_layout()
-    output_path = output_dir / 'vqa_runtime_comparison.png'
-    plt.savefig(output_path)
-    print(f"Saved runtime comparison plot to: {output_path}")
-    plt.close()
-
-
-def plot_iterations_comparison(results: List[Dict], output_dir: Path):
-    """Plot iterations comparison."""
-    fig, ax = plt.subplots(1, 1, figsize=(10, 6))
-
-    frameworks = [r['framework'] for r in results]
-    iterations = [r['iterations'] for r in results]
-    x_pos = np.arange(len(frameworks))
-    colors = [FRAMEWORK_COLORS.get(f, '#666666') for f in frameworks]
-
-    bars = ax.bar(x_pos, iterations, color=colors, alpha=0.7, edgecolor='black', linewidth=1.5)
-    ax.set_xlabel('Framework', fontweight='bold')
-    ax.set_ylabel('Number of Iterations', fontweight='bold')
-    ax.set_title('VQE Convergence Iterations', fontweight='bold', fontsize=15)
-    ax.set_xticks(x_pos)
-    ax.set_xticklabels(frameworks, rotation=15, ha='right')
-    ax.grid(True, alpha=0.3, linestyle='--', axis='y')
-
-    # Add value labels on bars
-    for bar, iters in zip(bars, iterations):
-        height = bar.get_height()
-        ax.text(bar.get_x() + bar.get_width()/2., height,
-                f'{iters}',
-                ha='center', va='bottom', fontsize=10, fontweight='bold')
-
-    plt.tight_layout()
-    output_path = output_dir / 'vqa_iterations_comparison.png'
-    plt.savefig(output_path)
-    print(f"Saved iterations comparison plot to: {output_path}")
-    plt.close()
-
-
-def plot_comprehensive_comparison(results: List[Dict], output_dir: Path):
-    """Create a comprehensive comparison plot with all metrics."""
-    fig = plt.figure(figsize=(18, 6))
-    gs = fig.add_gridspec(1, 3, hspace=0.3, wspace=0.3)
-
-    frameworks = [r['framework'] for r in results]
-    x_pos = np.arange(len(frameworks))
-    colors = [FRAMEWORK_COLORS.get(f, '#666666') for f in frameworks]
-
-    # Energy Error
-    ax1 = fig.add_subplot(gs[0, 0])
-    energy_errors = [r['energy_error'] for r in results]
-    bars1 = ax1.bar(x_pos, energy_errors, color=colors, alpha=0.7, edgecolor='black', linewidth=1.5)
-    ax1.set_ylabel('Energy Error (Ha)', fontweight='bold')
-    ax1.set_title('Energy Error', fontweight='bold')
-    ax1.set_xticks(x_pos)
-    ax1.set_xticklabels(frameworks, rotation=15, ha='right')
+    # Plot 1: Energy Error vs Parameters
+    for fw, fw_results in frameworks.items():
+        params = [r['parameters'] for r in fw_results]
+        errors = [r['energy_error'] for r in fw_results]
+        color = FRAMEWORK_COLORS.get(fw, '#666666')
+        marker = FRAMEWORK_MARKERS.get(fw, 'o')
+        ax1.plot(params, errors, marker=marker, linewidth=2.5, markersize=10, 
+                label=fw, color=color, alpha=0.8)
+    
+    ax1.set_xlabel('Number of Parameters', fontweight='bold')
+    ax1.set_ylabel('Energy Error |E - E_exact| (Ha)', fontweight='bold')
+    ax1.set_title('Energy Error vs Number of Parameters', fontweight='bold', fontsize=14)
     ax1.set_yscale('log')
     ax1.grid(True, alpha=0.3, linestyle='--', which='both')
-    for bar, error in zip(bars1, energy_errors):
-        height = bar.get_height()
-        ax1.text(bar.get_x() + bar.get_width()/2., height,
-                f'{error:.2e}', ha='center', va='bottom', fontsize=8, fontweight='bold')
-
-    # Runtime
-    ax2 = fig.add_subplot(gs[0, 1])
-    runtimes = [r['runtime_ms'] for r in results]
-    bars2 = ax2.bar(x_pos, runtimes, color=colors, alpha=0.7, edgecolor='black', linewidth=1.5)
+    ax1.legend(loc='best', framealpha=0.95)
+    ax1.set_xticks([12, 16, 20, 24, 28])
+    
+    # Plot 2: Runtime vs Parameters
+    for fw, fw_results in frameworks.items():
+        params = [r['parameters'] for r in fw_results]
+        runtimes = [r['runtime_ms'] for r in fw_results]
+        color = FRAMEWORK_COLORS.get(fw, '#666666')
+        marker = FRAMEWORK_MARKERS.get(fw, 'o')
+        ax2.plot(params, runtimes, marker=marker, linewidth=2.5, markersize=10,
+                label=fw, color=color, alpha=0.8)
+    
+    ax2.set_xlabel('Number of Parameters', fontweight='bold')
     ax2.set_ylabel('Runtime (ms)', fontweight='bold')
-    ax2.set_title('Runtime', fontweight='bold')
-    ax2.set_xticks(x_pos)
-    ax2.set_xticklabels(frameworks, rotation=15, ha='right')
-    ax2.grid(True, alpha=0.3, linestyle='--', axis='y')
-    for bar, runtime in zip(bars2, runtimes):
-        height = bar.get_height()
-        ax2.text(bar.get_x() + bar.get_width()/2., height,
-                f'{runtime:.1f}', ha='center', va='bottom', fontsize=8, fontweight='bold')
-
-    # Iterations
-    ax3 = fig.add_subplot(gs[0, 2])
-    iterations = [r['iterations'] for r in results]
-    bars3 = ax3.bar(x_pos, iterations, color=colors, alpha=0.7, edgecolor='black', linewidth=1.5)
-    ax3.set_ylabel('Iterations', fontweight='bold')
-    ax3.set_title('Convergence Iterations', fontweight='bold')
-    ax3.set_xticks(x_pos)
-    ax3.set_xticklabels(frameworks, rotation=15, ha='right')
-    ax3.grid(True, alpha=0.3, linestyle='--', axis='y')
-    for bar, iters in zip(bars3, iterations):
-        height = bar.get_height()
-        ax3.text(bar.get_x() + bar.get_width()/2., height,
-                f'{iters}', ha='center', va='bottom', fontsize=8, fontweight='bold')
-
-    fig.suptitle('H₂ VQE Cross-Framework Benchmark Comparison', fontsize=18, fontweight='bold', y=1.02)
-    plt.savefig(output_dir / 'vqa_comprehensive_comparison.png', bbox_inches='tight')
-    print(f"Saved comprehensive comparison plot to: {output_dir / 'vqa_comprehensive_comparison.png'}")
+    ax2.set_title('Runtime vs Number of Parameters', fontweight='bold', fontsize=14)
+    ax2.grid(True, alpha=0.3, linestyle='--')
+    ax2.legend(loc='best', framealpha=0.95)
+    ax2.set_xticks([12, 16, 20, 24, 28])
+    
+    # Plot 3: Iterations vs Parameters
+    for fw, fw_results in frameworks.items():
+        params = [r['parameters'] for r in fw_results]
+        iterations = [r['iterations'] for r in fw_results]
+        color = FRAMEWORK_COLORS.get(fw, '#666666')
+        marker = FRAMEWORK_MARKERS.get(fw, 'o')
+        ax3.plot(params, iterations, marker=marker, linewidth=2.5, markersize=10,
+                label=fw, color=color, alpha=0.8)
+    
+    ax3.set_xlabel('Number of Parameters', fontweight='bold')
+    ax3.set_ylabel('Number of Iterations', fontweight='bold')
+    ax3.set_title('Convergence Iterations vs Number of Parameters', fontweight='bold', fontsize=14)
+    ax3.grid(True, alpha=0.3, linestyle='--')
+    ax3.legend(loc='best', framealpha=0.95)
+    ax3.set_xticks([12, 16, 20, 24, 28])
+    
+    # Plot 4: VQE Energy vs Parameters
+    exact_energy = results[0]['exact_energy'] if results else 0
+    for fw, fw_results in frameworks.items():
+        params = [r['parameters'] for r in fw_results]
+        energies = [r['vqe_energy'] for r in fw_results]
+        color = FRAMEWORK_COLORS.get(fw, '#666666')
+        marker = FRAMEWORK_MARKERS.get(fw, 'o')
+        ax4.plot(params, energies, marker=marker, linewidth=2.5, markersize=10,
+                label=fw, color=color, alpha=0.8)
+    
+    ax4.axhline(y=exact_energy, color='red', linestyle='--', linewidth=2,
+               label=f'Exact Energy (Ha)')
+    ax4.set_xlabel('Number of Parameters', fontweight='bold')
+    ax4.set_ylabel('VQE Energy (Ha)', fontweight='bold')
+    ax4.set_title('VQE Energy vs Number of Parameters', fontweight='bold', fontsize=14)
+    ax4.grid(True, alpha=0.3, linestyle='--')
+    ax4.legend(loc='best', framealpha=0.95)
+    ax4.set_xticks([12, 16, 20, 24, 28])
+    
+    plt.suptitle('VQE Parameter Sweep Analysis', fontsize=18, fontweight='bold', y=0.995)
+    plt.tight_layout()
+    output_path = output_dir / 'vqa_parameter_sweep.png'
+    plt.savefig(output_path)
+    print(f"Saved parameter sweep plot to: {output_path}")
     plt.close()
 
 
 def main():
     script_dir = Path(__file__).parent
-    json_path = script_dir / 'vqa_benchmark_results.json'
     output_dir = script_dir
+    param_sweep_path = script_dir / 'vqa_parameter_sweep_results.json'
 
-    if not json_path.exists():
-        print(f"Error: Results file not found: {json_path}")
-        print("Please run ./run_vqa_benchmark.sh first to generate benchmark results.")
+    if not param_sweep_path.exists():
+        print(f"Error: Parameter sweep results not found: {param_sweep_path}")
+        print("Please run ./run_vqa_parameter_sweep.sh first to generate results.")
         return
 
-    print("Loading benchmark results...")
-    results = load_results(json_path)
+    print("Loading parameter sweep results...")
+    param_results = load_results(param_sweep_path)
 
-    print(f"Found {len(results)} benchmark results:")
-    for r in results:
-        print(f"  - {r['framework']}: Energy={r['vqe_energy']:.6f} Ha, Runtime={r['runtime_ms']:.2f} ms, Iterations={r['iterations']}")
+    if not param_results:
+        print("No parameter sweep entries found in the results file.")
+        return
 
-    print("\nGenerating plots...")
-    plot_energy_comparison(results, output_dir)
-    plot_runtime_comparison(results, output_dir)
-    plot_iterations_comparison(results, output_dir)
-    plot_comprehensive_comparison(results, output_dir)
+    print(f"Found {len(param_results)} parameter sweep entries:")
+    for r in param_results:
+        print(
+            f"  - {r['framework']}: params={r['parameters']}, "
+            f"energy={r['vqe_energy']:.6f} Ha, runtime={r['runtime_ms']:.2f} ms, "
+            f"iterations={r['iterations']}"
+        )
 
-    print("\nAll plots generated successfully!")
+    print("\nGenerating parameter sweep plot...")
+    plot_parameter_sweep(param_results, output_dir)
+
+    print("\nParameter sweep plot generated successfully!")
 
 
 if __name__ == "__main__":

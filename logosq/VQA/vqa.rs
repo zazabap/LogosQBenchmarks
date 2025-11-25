@@ -7,6 +7,7 @@ use logosq::optimization::gradient::ParameterShift;
 use logosq::optimization::observable::{Pauli, PauliObservable, PauliTerm};
 use logosq::optimization::optimizer::Adam;
 use logosq::optimization::vqe::{VQE, VQEResult};
+use nalgebra::DMatrix;
 use num_complex::Complex64;
 use std::time::Instant;
 
@@ -61,6 +62,7 @@ fn compute_exact_ground_state_energy(hamiltonian: &PauliObservable) -> f64 {
     let dim = 1 << n;
     let mut matrix = Array2::<Complex64>::zeros((dim, dim));
 
+    // Build the Hamiltonian matrix
     for term in &hamiltonian.terms {
         let pauli_mats: Vec<Array2<Complex64>> = term.paulis.iter().map(|p| p.matrix()).collect();
         let mut term_matrix = Array2::<Complex64>::ones((1, 1));
@@ -86,40 +88,29 @@ fn compute_exact_ground_state_energy(hamiltonian: &PauliObservable) -> f64 {
         }
     }
 
-    let mut max_eig = f64::NEG_INFINITY;
-    for i in 0..dim {
-        max_eig = max_eig.max(matrix[[i, i]].re);
-    }
-
-    let lambda_max = max_eig + 10.0;
-    let mut transformed = Array2::<Complex64>::zeros((dim, dim));
+    // Convert to nalgebra DMatrix for eigenvalue decomposition
+    // Since the Hamiltonian is Hermitian, eigenvalues are real
+    // Build a real symmetric matrix from the Hermitian matrix
+    let mut real_matrix = DMatrix::<f64>::zeros(dim, dim);
     for i in 0..dim {
         for j in 0..dim {
-            transformed[[i, j]] = if i == j {
-                Complex64::new(lambda_max, 0.0) - matrix[[i, j]]
+            // For Hermitian matrix: H_ij = conj(H_ji), so we take the real symmetric part
+            if i == j {
+                real_matrix[(i, j)] = matrix[[i, j]].re;
             } else {
-                -matrix[[i, j]]
-            };
+                // Average the Hermitian pair to get symmetric real matrix
+                real_matrix[(i, j)] = (matrix[[i, j]].re + matrix[[j, i]].re) / 2.0;
+                real_matrix[(j, i)] = real_matrix[(i, j)];
+            }
         }
     }
 
-    let mut state_vec = Array2::<Complex64>::zeros((dim, 1));
-    for i in 0..dim {
-        let real = (i + 1) as f64 / (dim as f64 + 1.0);
-        let imag = (dim - i) as f64 / (dim as f64 + 1.0);
-        state_vec[[i, 0]] = Complex64::new(real, imag);
-    }
-
-    let mut min_energy = f64::INFINITY;
-    for _ in 0..200 {
-        let new_state = transformed.dot(&state_vec);
-        let norm: f64 = new_state.iter().map(|x| x.norm_sqr()).sum::<f64>().sqrt();
-        state_vec = &new_state / norm;
-        let numerator = (state_vec.t().dot(&transformed.dot(&state_vec)))[[0, 0]];
-        let transformed_max = numerator.re;
-        let current_min = lambda_max - transformed_max;
-        min_energy = min_energy.min(current_min);
-    }
+    // Compute eigenvalues of the real symmetric matrix
+    let eigen = nalgebra::linalg::SymmetricEigen::new(real_matrix);
+    let eigenvalues = eigen.eigenvalues;
+    
+    // Find minimum eigenvalue
+    let min_energy = eigenvalues.iter().fold(f64::INFINITY, |a, &b| a.min(b));
 
     min_energy
 }
@@ -127,10 +118,16 @@ fn compute_exact_ground_state_energy(hamiltonian: &PauliObservable) -> f64 {
 fn run_logosq_vqe(
     hamiltonian: &PauliObservable,
     _exact_energy: f64,
+    layers: usize,
 ) -> (VQEResult, f64) {
+    // Note: LogosQ's VQE::run_random() uses an internal RNG that cannot be directly seeded.
+    // For full reproducibility, LogosQ would need to support setting initial parameters
+    // or exposing RNG seed control. This is a limitation of the current LogosQ API.
+    // Other frameworks (Qiskit, PennyLane, Yao.jl) use seed=1337 for reproducibility.
+    
     let ansatz = HardwareEfficientAnsatz::new(
         hamiltonian.num_qubits,
-        3,
+        layers,
         EntanglingGate::CNOT,
         EntanglingPattern::Linear,
     );
@@ -148,7 +145,14 @@ fn run_logosq_vqe(
 fn main() {
     let hamiltonian = create_h2_hamiltonian();
     let exact_energy = compute_exact_ground_state_energy(&hamiltonian);
-    let (logosq_result, runtime_ms) = run_logosq_vqe(&hamiltonian, exact_energy);
+    
+    // Get number of layers from environment variable (default: 3 for 12 parameters)
+    let layers = std::env::var("VQA_LAYERS")
+        .ok()
+        .and_then(|s| s.parse::<usize>().ok())
+        .unwrap_or(3);
+    
+    let (logosq_result, runtime_ms) = run_logosq_vqe(&hamiltonian, exact_energy, layers);
 
     let json_output = format!(
         r#"{{
@@ -166,7 +170,7 @@ fn main() {
         (logosq_result.ground_state_energy - exact_energy).abs(),
         logosq_result.num_iterations,
         runtime_ms,
-        hamiltonian.num_qubits * 3
+        hamiltonian.num_qubits * layers
     );
 
     // Write to JSON file

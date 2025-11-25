@@ -116,9 +116,9 @@ def build_ansatz(reps: int = 3):
     return ansatz
 
 
-def run_pennylane_vqe(hamiltonian: qml.Hamiltonian, exact_energy: float) -> dict:
+def run_pennylane_vqe(hamiltonian: qml.Hamiltonian, exact_energy: float, reps: int = 3) -> dict:
     dev = qml.device("default.qubit", wires=4)
-    ansatz = build_ansatz(reps=3)
+    ansatz = build_ansatz(reps=reps)
 
     @qml.qnode(dev)
     def vqe_circuit(params):
@@ -133,7 +133,7 @@ def run_pennylane_vqe(hamiltonian: qml.Hamiltonian, exact_energy: float) -> dict
     tolerance = 1e-7
 
     rng = onp.random.default_rng(seed=1337)
-    params = np.array(rng.uniform(0.0, 2 * onp.pi, size=(3, 4)), requires_grad=True)
+    params = np.array(rng.uniform(0.0, 2 * onp.pi, size=(reps, 4)), requires_grad=True)
 
     energies: List[float] = []
     start = time.perf_counter()
@@ -159,7 +159,7 @@ def run_pennylane_vqe(hamiltonian: qml.Hamiltonian, exact_energy: float) -> dict
         "energy_error": delta,
         "iterations": iterations,
         "runtime_ms": round(runtime_ms, 2),
-        "parameters": 12,
+        "parameters": reps * 4,
         "converged": converged,
     }
 
@@ -182,7 +182,11 @@ def main():
     import os
     hamiltonian = create_h2_hamiltonian()
     exact_energy = compute_exact_ground_state_energy(hamiltonian)
-    result = run_pennylane_vqe(hamiltonian, exact_energy)
+    
+    # Get number of layers from environment variable (default: 3 for 12 parameters)
+    reps = int(os.environ.get("VQA_LAYERS", "3"))
+    
+    result = run_pennylane_vqe(hamiltonian, exact_energy, reps=reps)
     
     # Write to JSON file
     output_file = os.environ.get("VQA_OUTPUT_FILE", "pennylane_vqa_result.json")
