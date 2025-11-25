@@ -3,7 +3,7 @@
 
 set -e
 
-RESULTS_DIR="/app/test_results"
+RESULTS_DIR="/app/test_results/gradient"
 mkdir -p "$RESULTS_DIR"
 
 echo "Running gradient bug tests for all libraries..."

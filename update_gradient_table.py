@@ -6,7 +6,7 @@ Run this after running run_gradient_tests.sh to update the dashboard
 import re
 from pathlib import Path
 
-RESULTS_DIR = Path("/app/test_results")
+RESULTS_DIR = Path("/app/test_results/gradient")
 HTML_FILE = Path("/app/summary/public/index.html")
 
 def parse_library_results(library_name):

@@ -5,8 +5,10 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-OUTPUT_DIR="${SCRIPT_DIR}/test_results/parameter_sweep"
-mkdir -p "$OUTPUT_DIR"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+RESULTS_BASE_DIR="/app/test_results/vqa_parameter_sweep"
+OUTPUT_DIR="${RESULTS_BASE_DIR}/individual"
+mkdir -p "$RESULTS_BASE_DIR" "$OUTPUT_DIR"
 
 # Parameter counts: 12, 16, 20, 24, 28 (for 4 qubits: 3, 4, 5, 6, 7 layers)
 PARAM_COUNTS=(12 16 20 24 28)
@@ -33,7 +35,7 @@ for framework in "${FRAMEWORKS[@]}"; do
         
         case $framework in
             logosq)
-                if cd "${SCRIPT_DIR}/logosq" && VQA_LAYERS="$layers" VQA_OUTPUT_FILE="$output_file" cargo run --example vqa > /dev/null 2>&1; then
+                if cd "${REPO_ROOT}/logosq" && VQA_LAYERS="$layers" VQA_OUTPUT_FILE="$output_file" cargo run --example vqa > /dev/null 2>&1; then
                     if [ -f "$output_file" ]; then
                         echo "    ✓ Completed"
                     else
@@ -44,7 +46,7 @@ for framework in "${FRAMEWORKS[@]}"; do
                 fi
                 ;;
             qiskit)
-                if VQA_LAYERS="$layers" VQA_OUTPUT_FILE="$output_file" python3 "${SCRIPT_DIR}/qiskit/VQA/vqa.py" > /dev/null 2>&1; then
+                if VQA_LAYERS="$layers" VQA_OUTPUT_FILE="$output_file" python3 "${REPO_ROOT}/qiskit/VQA/vqa.py" > /dev/null 2>&1; then
                     if [ -f "$output_file" ]; then
                         echo "    ✓ Completed"
                     else
@@ -55,7 +57,7 @@ for framework in "${FRAMEWORKS[@]}"; do
                 fi
                 ;;
             pennylane)
-                if VQA_LAYERS="$layers" VQA_OUTPUT_FILE="$output_file" python3 "${SCRIPT_DIR}/pennylane/VQA/vqa.py" > /dev/null 2>&1; then
+                if VQA_LAYERS="$layers" VQA_OUTPUT_FILE="$output_file" python3 "${REPO_ROOT}/pennylane/VQA/vqa.py" > /dev/null 2>&1; then
                     if [ -f "$output_file" ]; then
                         echo "    ✓ Completed"
                     else
@@ -66,7 +68,7 @@ for framework in "${FRAMEWORKS[@]}"; do
                 fi
                 ;;
             yao)
-                if VQA_LAYERS="$layers" VQA_OUTPUT_FILE="$output_file" julia "${SCRIPT_DIR}/yao.jl/VQA/vqa.jl" > /dev/null 2>&1; then
+                if VQA_LAYERS="$layers" VQA_OUTPUT_FILE="$output_file" julia "${REPO_ROOT}/yao.jl/VQA/vqa.jl" > /dev/null 2>&1; then
                     if [ -f "$output_file" ]; then
                         echo "    ✓ Completed"
                     else
@@ -83,7 +85,7 @@ done
 
 # Combine all results into a single JSON file
 echo "Combining results..."
-combined_file="${SCRIPT_DIR}/vqa_parameter_sweep_results.json"
+combined_file="${RESULTS_BASE_DIR}/vqa_parameter_sweep_results.json"
 python3 << PYTHON_SCRIPT
 import json
 import sys

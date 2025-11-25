@@ -48,6 +48,9 @@ plt.rcParams.update({
 
 fig_size = (16, 7)
 
+RESULTS_DIR = Path("/app/test_results/qft")
+RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+
 # Library configuration with enhanced styling
 LIBRARIES = {
     'logosq': {
@@ -59,7 +62,7 @@ LIBRARIES = {
         'linestyle': '-',
         'linewidth': 2.8,
         'alpha': 0.9,
-        'file': '/app/logosq/QuantumFourierTransform/qft_benchmark_results.json'
+        'file': str(RESULTS_DIR / 'logosq_qft_benchmark_results.json')
     },
     'pennylane': {
         'name': 'PennyLane (Python)',
@@ -70,7 +73,7 @@ LIBRARIES = {
         'linestyle': '-',
         'linewidth': 2.8,
         'alpha': 0.9,
-        'file': '/app/pennylane/QuantumFourierTransform/qft_benchmark_results.json'
+        'file': str(RESULTS_DIR / 'pennylane_qft_benchmark_results.json')
     },
     'qiskit': {
         'name': 'Qiskit (Python)',
@@ -81,7 +84,7 @@ LIBRARIES = {
         'linestyle': '-',
         'linewidth': 2.8,
         'alpha': 0.9,
-        'file': '/app/qiskit/QuantumFourierTransform/qiskit_qft_benchmark_results.json'
+        'file': str(RESULTS_DIR / 'qiskit_qft_benchmark_results.json')
     },
     'yao': {
         'name': 'Yao.jl (Julia)',
@@ -92,7 +95,7 @@ LIBRARIES = {
         'linestyle': '-',
         'linewidth': 2.8,
         'alpha': 0.9,
-        'file': '/app/yao.jl/QuantumFourierTransform/qft_benchmark_results.json'
+        'file': str(RESULTS_DIR / 'yao_qft_benchmark_results.json')
     }
 }
 
@@ -442,7 +445,7 @@ def main():
     print("=" * 70)
     
     # Output directory
-    output_dir = Path("/app/pennylane/QuantumFourierTransform")
+    output_dir = RESULTS_DIR
     output_dir.mkdir(parents=True, exist_ok=True)
     
     # Load results from all libraries

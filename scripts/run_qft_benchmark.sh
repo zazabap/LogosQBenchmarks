@@ -4,6 +4,11 @@
 # Don't exit on error - we want to continue even if one benchmark fails
 set +e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+RESULTS_DIR="/app/test_results/qft"
+mkdir -p "$RESULTS_DIR"
+
 echo "================================================"
 echo "QFT Benchmark Suite - All Libraries"
 echo "================================================"
@@ -38,7 +43,7 @@ echo "1/4 Running LogosQ (Rust) QFT Benchmark..."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 if command -v cargo &> /dev/null; then
-    cd /app/logosq/QuantumFourierTransform
+    cd "${REPO_ROOT}/logosq/QuantumFourierTransform"
     
     # Check if we need to add it as an example
     if ! grep -q "qft_benchmark_simple" /app/logosq/Cargo.toml; then
@@ -55,6 +60,10 @@ EOF
     if cargo run --example qft_benchmark_simple --release > /tmp/logosq_qft_benchmark.log 2>&1; then
         print_status "SUCCESS" "LogosQ benchmark completed"
         SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
+        LOGOSQ_RESULT_SRC="${REPO_ROOT}/logosq/QuantumFourierTransform/qft_benchmark_results.json"
+        if [ -f "$LOGOSQ_RESULT_SRC" ]; then
+            cp "$LOGOSQ_RESULT_SRC" "${RESULTS_DIR}/logosq_qft_benchmark_results.json"
+        fi
     else
         print_status "FAIL" "LogosQ benchmark failed (check /tmp/logosq_qft_benchmark.log)"
         cat /tmp/logosq_qft_benchmark.log | tail -20  # Show last 20 lines for debugging
@@ -71,7 +80,7 @@ echo "2/4 Running PennyLane (Python) QFT Benchmark..."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 if command -v python3 &> /dev/null; then
-    cd /app/pennylane/QuantumFourierTransform
+    cd "${REPO_ROOT}/pennylane/QuantumFourierTransform"
     
     # Check if pennylane_qft module exists, if not create a simple import workaround
     if [ ! -f "pennylane_qft.py" ]; then
@@ -81,6 +90,10 @@ if command -v python3 &> /dev/null; then
     if python3 pennylane_qft_benchmark.py > /tmp/pennylane_qft_benchmark.log 2>&1; then
         print_status "SUCCESS" "PennyLane benchmark completed"
         SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
+        PENNYLANE_RESULT_SRC="${REPO_ROOT}/pennylane/QuantumFourierTransform/qft_benchmark_results.json"
+        if [ -f "$PENNYLANE_RESULT_SRC" ]; then
+            cp "$PENNYLANE_RESULT_SRC" "${RESULTS_DIR}/pennylane_qft_benchmark_results.json"
+        fi
     else
         print_status "FAIL" "PennyLane benchmark failed (check /tmp/pennylane_qft_benchmark.log)"
         cat /tmp/pennylane_qft_benchmark.log | tail -20  # Show last 20 lines for debugging
@@ -97,11 +110,15 @@ echo "3/4 Running Qiskit (Python) QFT Benchmark..."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 if command -v python3 &> /dev/null; then
-    cd /app/qiskit/QuantumFourierTransform
+    cd "${REPO_ROOT}/qiskit/QuantumFourierTransform"
     
     if python3 qiskit_benchmark.py > /tmp/qiskit_qft_benchmark.log 2>&1; then
         print_status "SUCCESS" "Qiskit benchmark completed"
         SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
+        QISKIT_RESULT_SRC="${REPO_ROOT}/qiskit/QuantumFourierTransform/qiskit_qft_benchmark_results.json"
+        if [ -f "$QISKIT_RESULT_SRC" ]; then
+            cp "$QISKIT_RESULT_SRC" "${RESULTS_DIR}/qiskit_qft_benchmark_results.json"
+        fi
     else
         print_status "FAIL" "Qiskit benchmark failed (check /tmp/qiskit_qft_benchmark.log)"
         cat /tmp/qiskit_qft_benchmark.log | tail -20  # Show last 20 lines for debugging
@@ -118,7 +135,7 @@ echo "4/4 Running Yao.jl (Julia) QFT Benchmark..."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 if command -v julia &> /dev/null; then
-    cd /app/yao.jl
+    cd "${REPO_ROOT}/yao.jl"
     
     # Clear corrupted precompilation cache for Yao
     echo "Clearing Yao precompilation cache..."
@@ -177,19 +194,27 @@ if command -v julia &> /dev/null; then
         end
     ' >> /tmp/yao_deps.log 2>&1 || true
     
-    cd /app/yao.jl/QuantumFourierTransform
+    cd "${REPO_ROOT}/yao.jl/QuantumFourierTransform"
     
     # Run with project environment activated
     # Try without --compiled-modules=no first (faster), fall back if needed
     if julia --project=/app/yao.jl yao_qft_benchmark.jl > /tmp/yao_qft_benchmark.log 2>&1; then
         print_status "SUCCESS" "Yao.jl benchmark completed"
         SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
+        YAO_RESULT_SRC="${REPO_ROOT}/yao.jl/QuantumFourierTransform/qft_benchmark_results.json"
+        if [ -f "$YAO_RESULT_SRC" ]; then
+            cp "$YAO_RESULT_SRC" "${RESULTS_DIR}/yao_qft_benchmark_results.json"
+        fi
     else
         # If it failed, try with --compiled-modules=no to work around circular dependency
         echo "First attempt failed, trying with --compiled-modules=no to work around circular dependency..."
         if julia --project=/app/yao.jl --compiled-modules=no yao_qft_benchmark.jl > /tmp/yao_qft_benchmark.log 2>&1; then
             print_status "SUCCESS" "Yao.jl benchmark completed (with --compiled-modules=no)"
             SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
+            YAO_RESULT_SRC="${REPO_ROOT}/yao.jl/QuantumFourierTransform/qft_benchmark_results.json"
+            if [ -f "$YAO_RESULT_SRC" ]; then
+                cp "$YAO_RESULT_SRC" "${RESULTS_DIR}/yao_qft_benchmark_results.json"
+            fi
         else
             print_status "FAIL" "Yao.jl benchmark failed (check /tmp/yao_qft_benchmark.log)"
             echo "Last 30 lines of error log:"
@@ -215,14 +240,12 @@ echo "Generating Comparison Plots..."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 if command -v python3 &> /dev/null; then
-    cd /app/pennylane/QuantumFourierTransform
-    
     # Check if we have at least one result file
     RESULT_FILES=(
-        "/app/logosq/QuantumFourierTransform/qft_benchmark_results.json"
-        "/app/pennylane/QuantumFourierTransform/qft_benchmark_results.json"
-        "/app/qiskit/QuantumFourierTransform/qiskit_qft_benchmark_results.json"
-        "/app/yao.jl/QuantumFourierTransform/qft_benchmark_results.json"
+        "${RESULTS_DIR}/logosq_qft_benchmark_results.json"
+        "${RESULTS_DIR}/pennylane_qft_benchmark_results.json"
+        "${RESULTS_DIR}/qiskit_qft_benchmark_results.json"
+        "${RESULTS_DIR}/yao_qft_benchmark_results.json"
     )
     
     FOUND_COUNT=0
@@ -240,7 +263,7 @@ if command -v python3 &> /dev/null; then
     
     echo "Found $FOUND_COUNT result file(s). Generating plots..."
     
-    if python3 plot_qft_comparison.py > /tmp/qft_plot_generation.log 2>&1; then
+    if python3 "${SCRIPT_DIR}/plot_qft_comparison.py" > /tmp/qft_plot_generation.log 2>&1; then
         print_status "SUCCESS" "Comparison plots generated successfully"
         echo ""
         echo "Generated plots:"
@@ -248,9 +271,9 @@ if command -v python3 &> /dev/null; then
         echo "  • qft_memory_comparison.png"
         echo "  • qft_speedup_comparison.png"
         echo ""
-        echo "Location: /app/pennylane/QuantumFourierTransform/"
+        echo "Location: ${RESULTS_DIR}"
     else
-        print_status "FAIL" "Plot generation failed (check /tmp/qft_plot_generation.log)"
+        print_status "FAIL" "Plot generation failed (check /tmp/qft_plot_generation.log)"`
         cat /tmp/qft_plot_generation.log | tail -30  # Show last 30 lines for debugging
         echo ""
         echo "Note: Plots will still be generated if at least one benchmark result file exists."
@@ -265,15 +288,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo -e "${GREEN}✓ All QFT benchmarks and plots completed!${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "Result files:"
-echo "  • LogosQ:    /app/logosq/QuantumFourierTransform/qft_benchmark_results.json"
-echo "  • PennyLane: /app/pennylane/QuantumFourierTransform/qft_benchmark_results.json"
-echo "  • Qiskit:    /app/qiskit/QuantumFourierTransform/qiskit_qft_benchmark_results.json"
-echo "  • Yao.jl:    /app/yao.jl/QuantumFourierTransform/qft_benchmark_results.json"
-echo ""
-echo "Plots:"
-echo "  • /app/pennylane/QuantumFourierTransform/qft_execution_time_comparison.png"
-echo "  • /app/pennylane/QuantumFourierTransform/qft_memory_comparison.png"
-echo "  • /app/pennylane/QuantumFourierTransform/qft_speedup_comparison.png"
+echo "Result files stored in: ${RESULTS_DIR}"
+echo "Plots saved to:         ${RESULTS_DIR}"
 echo ""
 

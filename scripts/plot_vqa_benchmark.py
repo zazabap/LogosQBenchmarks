@@ -59,6 +59,9 @@ FRAMEWORK_MARKERS = {
     'Yao.jl (Julia)': 'D',
 }
 
+RESULTS_DIR = Path("/app/test_results/vqa_parameter_sweep")
+RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+RESULTS_JSON = RESULTS_DIR / "vqa_parameter_sweep_results.json"
 
 def load_results(json_path: Path) -> List[Dict]:
     """Load benchmark results from JSON file."""
@@ -159,17 +162,15 @@ def plot_parameter_sweep(results: List[Dict], output_dir: Path):
 
 
 def main():
-    script_dir = Path(__file__).parent
-    output_dir = script_dir
-    param_sweep_path = script_dir / 'vqa_parameter_sweep_results.json'
+    output_dir = RESULTS_DIR
 
-    if not param_sweep_path.exists():
-        print(f"Error: Parameter sweep results not found: {param_sweep_path}")
+    if not RESULTS_JSON.exists():
+        print(f"Error: Parameter sweep results not found: {RESULTS_JSON}")
         print("Please run ./run_vqa_parameter_sweep.sh first to generate results.")
         return
 
     print("Loading parameter sweep results...")
-    param_results = load_results(param_sweep_path)
+    param_results = load_results(RESULTS_JSON)
 
     if not param_results:
         print("No parameter sweep entries found in the results file.")
