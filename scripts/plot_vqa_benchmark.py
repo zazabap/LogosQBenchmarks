@@ -83,81 +83,96 @@ def plot_parameter_sweep(results: List[Dict], output_dir: Path):
     for fw in frameworks:
         frameworks[fw].sort(key=lambda x: x['parameters'])
     
-    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(16, 12))
-    
     # Plot 1: Energy Error vs Parameters
+    plt.figure(figsize=(8, 6))
     for fw, fw_results in frameworks.items():
         params = [r['parameters'] for r in fw_results]
         errors = [r['energy_error'] for r in fw_results]
         color = FRAMEWORK_COLORS.get(fw, '#666666')
         marker = FRAMEWORK_MARKERS.get(fw, 'o')
-        ax1.plot(params, errors, marker=marker, linewidth=2.5, markersize=10, 
+        plt.plot(params, errors, marker=marker, linewidth=2.5, markersize=10, 
                 label=fw, color=color, alpha=0.8)
     
-    ax1.set_xlabel('Number of Parameters', fontweight='bold')
-    ax1.set_ylabel('Energy Error |E - E_exact| (Ha)', fontweight='bold')
-    ax1.set_title('Energy Error vs Number of Parameters', fontweight='bold', fontsize=14)
-    ax1.set_yscale('log')
-    ax1.grid(True, alpha=0.3, linestyle='--', which='both')
-    ax1.legend(loc='best', framealpha=0.95)
-    ax1.set_xticks([12, 16, 20, 24, 28])
+    plt.xlabel('Number of Parameters', fontweight='bold')
+    plt.ylabel('Energy Error |E - E_exact| (Ha)', fontweight='bold')
+    plt.title('Energy Error vs Number of Parameters', fontweight='bold', fontsize=14)
+    plt.yscale('log')
+    plt.grid(True, alpha=0.3, linestyle='--', which='both')
+    plt.legend(loc='best', framealpha=0.95)
+    plt.xticks([12, 16, 20, 24, 28])
+    plt.tight_layout()
+    output_path = output_dir / 'vqa_parameter_sweep_error.png'
+    plt.savefig(output_path)
+    print(f"Saved energy error plot to: {output_path}")
+    plt.close()
     
     # Plot 2: Runtime vs Parameters
+    plt.figure(figsize=(8, 6))
     for fw, fw_results in frameworks.items():
         params = [r['parameters'] for r in fw_results]
         runtimes = [r['runtime_ms'] for r in fw_results]
         color = FRAMEWORK_COLORS.get(fw, '#666666')
         marker = FRAMEWORK_MARKERS.get(fw, 'o')
-        ax2.plot(params, runtimes, marker=marker, linewidth=2.5, markersize=10,
+        plt.plot(params, runtimes, marker=marker, linewidth=2.5, markersize=10,
                 label=fw, color=color, alpha=0.8)
     
-    ax2.set_xlabel('Number of Parameters', fontweight='bold')
-    ax2.set_ylabel('Runtime (ms)', fontweight='bold')
-    ax2.set_title('Runtime vs Number of Parameters', fontweight='bold', fontsize=14)
-    ax2.grid(True, alpha=0.3, linestyle='--')
-    ax2.legend(loc='best', framealpha=0.95)
-    ax2.set_xticks([12, 16, 20, 24, 28])
+    plt.xlabel('Number of Parameters', fontweight='bold')
+    plt.ylabel('Runtime (ms)', fontweight='bold')
+    plt.title('Runtime vs Number of Parameters', fontweight='bold', fontsize=14)
+    plt.grid(True, alpha=0.3, linestyle='--')
+    plt.legend(loc='best', framealpha=0.95)
+    plt.xticks([12, 16, 20, 24, 28])
+    plt.tight_layout()
+    output_path = output_dir / 'vqa_parameter_sweep_runtime.png'
+    plt.savefig(output_path)
+    print(f"Saved runtime plot to: {output_path}")
+    plt.close()
     
     # Plot 3: Iterations vs Parameters
+    plt.figure(figsize=(8, 6))
     for fw, fw_results in frameworks.items():
         params = [r['parameters'] for r in fw_results]
         iterations = [r['iterations'] for r in fw_results]
         color = FRAMEWORK_COLORS.get(fw, '#666666')
         marker = FRAMEWORK_MARKERS.get(fw, 'o')
-        ax3.plot(params, iterations, marker=marker, linewidth=2.5, markersize=10,
+        plt.plot(params, iterations, marker=marker, linewidth=2.5, markersize=10,
                 label=fw, color=color, alpha=0.8)
     
-    ax3.set_xlabel('Number of Parameters', fontweight='bold')
-    ax3.set_ylabel('Number of Iterations', fontweight='bold')
-    ax3.set_title('Convergence Iterations vs Number of Parameters', fontweight='bold', fontsize=14)
-    ax3.grid(True, alpha=0.3, linestyle='--')
-    ax3.legend(loc='best', framealpha=0.95)
-    ax3.set_xticks([12, 16, 20, 24, 28])
+    plt.xlabel('Number of Parameters', fontweight='bold')
+    plt.ylabel('Number of Iterations', fontweight='bold')
+    plt.title('Convergence Iterations vs Number of Parameters', fontweight='bold', fontsize=14)
+    plt.grid(True, alpha=0.3, linestyle='--')
+    plt.legend(loc='best', framealpha=0.95)
+    plt.xticks([12, 16, 20, 24, 28])
+    plt.tight_layout()
+    output_path = output_dir / 'vqa_parameter_sweep_iterations.png'
+    plt.savefig(output_path)
+    print(f"Saved iterations plot to: {output_path}")
+    plt.close()
     
     # Plot 4: VQE Energy vs Parameters
+    plt.figure(figsize=(8, 6))
     exact_energy = results[0]['exact_energy'] if results else 0
     for fw, fw_results in frameworks.items():
         params = [r['parameters'] for r in fw_results]
         energies = [r['vqe_energy'] for r in fw_results]
         color = FRAMEWORK_COLORS.get(fw, '#666666')
         marker = FRAMEWORK_MARKERS.get(fw, 'o')
-        ax4.plot(params, energies, marker=marker, linewidth=2.5, markersize=10,
+        plt.plot(params, energies, marker=marker, linewidth=2.5, markersize=10,
                 label=fw, color=color, alpha=0.8)
     
-    ax4.axhline(y=exact_energy, color='red', linestyle='--', linewidth=2,
+    plt.axhline(y=exact_energy, color='red', linestyle='--', linewidth=2,
                label=f'Exact Energy (Ha)')
-    ax4.set_xlabel('Number of Parameters', fontweight='bold')
-    ax4.set_ylabel('VQE Energy (Ha)', fontweight='bold')
-    ax4.set_title('VQE Energy vs Number of Parameters', fontweight='bold', fontsize=14)
-    ax4.grid(True, alpha=0.3, linestyle='--')
-    ax4.legend(loc='best', framealpha=0.95)
-    ax4.set_xticks([12, 16, 20, 24, 28])
-    
-    plt.suptitle('VQE Parameter Sweep Analysis', fontsize=18, fontweight='bold', y=0.995)
+    plt.xlabel('Number of Parameters', fontweight='bold')
+    plt.ylabel('VQE Energy (Ha)', fontweight='bold')
+    plt.title('VQE Energy vs Number of Parameters', fontweight='bold', fontsize=14)
+    plt.grid(True, alpha=0.3, linestyle='--')
+    plt.legend(loc='best', framealpha=0.95)
+    plt.xticks([12, 16, 20, 24, 28])
     plt.tight_layout()
-    output_path = output_dir / 'vqa_parameter_sweep.png'
+    output_path = output_dir / 'vqa_parameter_sweep_energy.png'
     plt.savefig(output_path)
-    print(f"Saved parameter sweep plot to: {output_path}")
+    print(f"Saved VQE energy plot to: {output_path}")
     plt.close()
 
 
