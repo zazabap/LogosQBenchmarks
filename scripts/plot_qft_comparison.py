@@ -55,9 +55,9 @@ RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 LIBRARIES = {
     'logosq': {
         'name': 'LogosQ (Rust)',
-        'color': '#1E88E5',  # Bright blue
+        'color': '#E63946',  # Red
         'marker': 'o',
-        'markeredgecolor': '#0D47A1',
+        'markeredgecolor': '#B71C1C',
         'markeredgewidth': 1.5,
         'linestyle': '-',
         'linewidth': 2.8,
@@ -66,9 +66,9 @@ LIBRARIES = {
     },
     'pennylane': {
         'name': 'PennyLane (Python)',
-        'color': '#9C27B0',  # Purple
-        'marker': 's',
-        'markeredgecolor': '#4A148C',
+        'color': '#F77F00',  # Orange
+        'marker': '^',
+        'markeredgecolor': '#E65100',
         'markeredgewidth': 1.5,
         'linestyle': '-',
         'linewidth': 2.8,
@@ -77,9 +77,9 @@ LIBRARIES = {
     },
     'qiskit': {
         'name': 'Qiskit (Python)',
-        'color': '#FF9800',  # Orange
-        'marker': '^',
-        'markeredgecolor': '#E65100',
+        'color': '#457B9D',  # Blue
+        'marker': 's',
+        'markeredgecolor': '#1D3557',
         'markeredgewidth': 1.5,
         'linestyle': '-',
         'linewidth': 2.8,
@@ -88,9 +88,9 @@ LIBRARIES = {
     },
     'yao': {
         'name': 'Yao.jl (Julia)',
-        'color': '#E53935',  # Red
+        'color': '#2A9D8F',  # Teal
         'marker': 'D',
-        'markeredgecolor': '#B71C1C',
+        'markeredgecolor': '#004D40',
         'markeredgewidth': 1.5,
         'linestyle': '-',
         'linewidth': 2.8,
@@ -99,7 +99,7 @@ LIBRARIES = {
     },
     'qsharp': {
         'name': 'Q# (.NET)',
-        'color': '#884dff',  # Purple/Violet
+        'color': '#884dff',  # Purple
         'marker': 'X',
         'markeredgecolor': '#5a32a8',
         'markeredgewidth': 1.5,
@@ -312,7 +312,7 @@ def plot_execution_time_comparison(
     ax2.set_ylabel('Execution Time (ms, log scale)', fontsize=13, fontweight='bold', labelpad=10)
     ax2.set_title('Logarithmic Scale', fontsize=14, fontweight='bold', pad=15)
     ax2.set_yscale('log')
-    ax2.legend(loc='upper left', frameon=True, fancybox=True, shadow=True,
+    ax2.legend(loc='lower right', frameon=True, fancybox=True, shadow=True,
                fontsize=11, framealpha=0.95, edgecolor='gray', facecolor='white')
     ax2.grid(True, alpha=0.4, linestyle='--', linewidth=0.8, which='both', zorder=0)
     ax2.set_facecolor('#FAFAFA')
@@ -384,7 +384,7 @@ def plot_speedup_comparison(
     # Create a dictionary for quick lookup
     baseline_dict = dict(zip(baseline_qubits, baseline_times))
     
-    fig, ax = plt.subplots(1, 1, figsize=(12, 7), facecolor='white')
+    fig, ax = plt.subplots(1, 1, figsize=(12, 10), facecolor='white')
     baseline_name = LIBRARIES[baseline_lib]['name']
     fig.suptitle(f'Quantum Fourier Transform - Performance Speedup Comparison\n({baseline_name} as Baseline)', 
                  fontsize=17, fontweight='bold', y=0.98)
