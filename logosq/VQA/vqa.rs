@@ -6,7 +6,7 @@ use logosq::optimization::ansatz::{EntanglingGate, EntanglingPattern, HardwareEf
 use logosq::optimization::gradient::ParameterShift;
 use logosq::optimization::observable::{Pauli, PauliObservable, PauliTerm};
 use logosq::optimization::optimizer::Adam;
-use logosq::optimization::vqe::{VQE, VQEResult};
+use logosq::optimization::vqe::{VQEResult, VQE};
 use nalgebra::DMatrix;
 use num_complex::Complex64;
 use std::time::Instant;
@@ -108,7 +108,7 @@ fn compute_exact_ground_state_energy(hamiltonian: &PauliObservable) -> f64 {
     // Compute eigenvalues of the real symmetric matrix
     let eigen = nalgebra::linalg::SymmetricEigen::new(real_matrix);
     let eigenvalues = eigen.eigenvalues;
-    
+
     // Find minimum eigenvalue
     let min_energy = eigenvalues.iter().fold(f64::INFINITY, |a, &b| a.min(b));
 
@@ -124,7 +124,7 @@ fn run_logosq_vqe(
     // For full reproducibility, LogosQ would need to support setting initial parameters
     // or exposing RNG seed control. This is a limitation of the current LogosQ API.
     // Other frameworks (Qiskit, PennyLane, Yao.jl) use seed=1337 for reproducibility.
-    
+
     let ansatz = HardwareEfficientAnsatz::new(
         hamiltonian.num_qubits,
         layers,
@@ -145,13 +145,13 @@ fn run_logosq_vqe(
 fn main() {
     let hamiltonian = create_h2_hamiltonian();
     let exact_energy = compute_exact_ground_state_energy(&hamiltonian);
-    
+
     // Get number of layers from environment variable (default: 3 for 12 parameters)
     let layers = std::env::var("VQA_LAYERS")
         .ok()
         .and_then(|s| s.parse::<usize>().ok())
         .unwrap_or(3);
-    
+
     let (logosq_result, runtime_ms) = run_logosq_vqe(&hamiltonian, exact_energy, layers);
 
     let json_output = format!(
@@ -174,8 +174,7 @@ fn main() {
     );
 
     // Write to JSON file
-    let output_file = std::env::var("VQA_OUTPUT_FILE")
-        .unwrap_or_else(|_| "logosq_vqa_result.json".to_string());
+    let output_file =
+        std::env::var("VQA_OUTPUT_FILE").unwrap_or_else(|_| "logosq_vqa_result.json".to_string());
     std::fs::write(&output_file, json_output).expect("Failed to write JSON file");
 }
-

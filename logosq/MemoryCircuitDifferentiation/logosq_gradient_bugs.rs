@@ -19,7 +19,7 @@
 use logosq::circuits::Circuit;
 use logosq::optimization::ansatz::{Ansatz, ParameterizedCircuit};
 use logosq::optimization::gradient::{FiniteDifference, GradientMethod, ParameterShift};
-use logosq::optimization::observable::{Observable, PauliObservable, PauliTerm, Pauli};
+use logosq::optimization::observable::{Observable, Pauli, PauliObservable, PauliTerm};
 use logosq::states::State;
 use std::f64::consts::PI;
 
@@ -44,18 +44,14 @@ impl LogosQGradientBugDemo {
         println!("BUG 1: Interleaving Non-Parameterized Gates with Parameterized Gates");
         println!("{}", "=".repeat(70));
 
-        let ansatz = ParameterizedCircuit::new(
-            4,
-            3,
-            move |params| {
-                let mut circuit = Circuit::new(4);
-                circuit.rx(0, params[0]);
-                circuit.cnot(0, 1);
-                circuit.ry(1, params[1]);
-                circuit.cry(0, 1, params[2]);
-                circuit
-            },
-        );
+        let ansatz = ParameterizedCircuit::new(4, 3, move |params| {
+            let mut circuit = Circuit::new(4);
+            circuit.rx(0, params[0]);
+            circuit.cnot(0, 1);
+            circuit.ry(1, params[1]);
+            circuit.cry(0, 1, params[2]);
+            circuit
+        });
 
         let obs = PauliObservable::single_z(4, 0);
         let ps_method = ParameterShift::new();
@@ -63,7 +59,9 @@ impl LogosQGradientBugDemo {
 
         let params = vec![0.5, PI / 2.0, 0.3];
 
-        println!("\n⚠ PROBLEM: CNOT (non-parameterized) is interleaved between parameterized gates");
+        println!(
+            "\n⚠ PROBLEM: CNOT (non-parameterized) is interleaved between parameterized gates"
+        );
         println!("   This may affect PSR's parameter dependency tracking!");
         println!("{}", "-".repeat(70));
 
@@ -78,10 +76,16 @@ impl LogosQGradientBugDemo {
         let fd_has_nan = fd_grad.iter().any(|&g| g.is_nan() || g.is_infinite());
 
         if ps_has_nan {
-            println!("⚠ WARNING: PSR gradient contains NaN/Inf values! {:?}", ps_grad);
+            println!(
+                "⚠ WARNING: PSR gradient contains NaN/Inf values! {:?}",
+                ps_grad
+            );
         }
         if fd_has_nan {
-            println!("⚠ WARNING: Finite-diff gradient contains NaN/Inf values! {:?}", fd_grad);
+            println!(
+                "⚠ WARNING: Finite-diff gradient contains NaN/Inf values! {:?}",
+                fd_grad
+            );
         }
 
         // Check if gradients match
@@ -98,7 +102,10 @@ impl LogosQGradientBugDemo {
                 .fold(0.0, f64::max);
 
             if max_diff > 1e-4 {
-                println!("⚠ WARNING: Gradient mismatch! Max difference: {:.6}", max_diff);
+                println!(
+                    "⚠ WARNING: Gradient mismatch! Max difference: {:.6}",
+                    max_diff
+                );
                 println!("  PSR: {:?}", ps_grad);
                 println!("  FD:  {:?}", fd_grad);
                 println!("  This suggests PSR may be computing wrong gradients");
@@ -106,7 +113,11 @@ impl LogosQGradientBugDemo {
                 println!("✓ Gradients match within tolerance");
             }
         } else if ps_grad.len() != fd_grad.len() {
-            println!("⚠ WARNING: Gradient shape mismatch! PSR: {}, FD: {}", ps_grad.len(), fd_grad.len());
+            println!(
+                "⚠ WARNING: Gradient shape mismatch! PSR: {}, FD: {}",
+                ps_grad.len(),
+                fd_grad.len()
+            );
         }
 
         self.results.insert(
@@ -121,7 +132,6 @@ impl LogosQGradientBugDemo {
         );
     }
 
-
     /// BUG 4: Silent NaN errors from edge cases
     ///
     /// Problem: Certain parameter values or circuit configurations cause
@@ -131,19 +141,15 @@ impl LogosQGradientBugDemo {
         println!("BUG 4: Silent NaN Errors from Edge Cases");
         println!("{}", "=".repeat(70));
 
-        let ansatz = ParameterizedCircuit::new(
-            2,
-            4,
-            move |params| {
-                let mut circuit = Circuit::new(2);
-                circuit.rx(0, params[0]);
-                circuit.ry(1, params[1]);
-                circuit.rz(0, params[2]);
-                circuit.cnot(0, 1);
-                circuit.cry(1, 0, params[3]);
-                circuit
-            },
-        );
+        let ansatz = ParameterizedCircuit::new(2, 4, move |params| {
+            let mut circuit = Circuit::new(2);
+            circuit.rx(0, params[0]);
+            circuit.ry(1, params[1]);
+            circuit.rz(0, params[2]);
+            circuit.cnot(0, 1);
+            circuit.cry(1, 0, params[3]);
+            circuit
+        });
 
         let obs = PauliObservable::single_z(2, 0);
         let ps_method = ParameterShift::new();
@@ -200,20 +206,16 @@ impl LogosQGradientBugDemo {
         println!("BUG 5: Parameter Reuse in Multiple Gates");
         println!("{}", "=".repeat(70));
 
-        let ansatz = ParameterizedCircuit::new(
-            2,
-            2,
-            move |params| {
-                let mut circuit = Circuit::new(2);
-                circuit.rx(0, params[0]);
-                circuit.ry(1, params[0]);
-                circuit.cnot(0, 1);
-                circuit.rz(0, params[1]);
-                circuit.rx(0, params[0]);
-                circuit.cry(0, 1, params[1]);
-                circuit
-            },
-        );
+        let ansatz = ParameterizedCircuit::new(2, 2, move |params| {
+            let mut circuit = Circuit::new(2);
+            circuit.rx(0, params[0]);
+            circuit.ry(1, params[0]);
+            circuit.cnot(0, 1);
+            circuit.rz(0, params[1]);
+            circuit.rx(0, params[0]);
+            circuit.cry(0, 1, params[1]);
+            circuit
+        });
 
         let obs = PauliObservable::single_z(2, 0);
         let ps_method = ParameterShift::new();
@@ -249,7 +251,10 @@ impl LogosQGradientBugDemo {
                 .fold(0.0, f64::max);
 
             if max_diff > 1e-4 {
-                println!("⚠ WARNING: Gradient mismatch! Max difference: {:.6}", max_diff);
+                println!(
+                    "⚠ WARNING: Gradient mismatch! Max difference: {:.6}",
+                    max_diff
+                );
                 println!("  PSR may not be correctly handling parameter reuse");
             } else {
                 println!("✓ Gradients match within tolerance");
@@ -277,29 +282,21 @@ impl LogosQGradientBugDemo {
         println!("BUG 6a: Operation Ordering PSR Evaluation Issues");
         println!("{}", "=".repeat(70));
 
-        let ansatz1 = ParameterizedCircuit::new(
-            2,
-            2,
-            move |params| {
-                let mut circuit = Circuit::new(2);
-                circuit.ry(0, params[0]);
-                circuit.cnot(0, 1);
-                circuit.rx(1, params[1]);
-                circuit
-            },
-        );
+        let ansatz1 = ParameterizedCircuit::new(2, 2, move |params| {
+            let mut circuit = Circuit::new(2);
+            circuit.ry(0, params[0]);
+            circuit.cnot(0, 1);
+            circuit.rx(1, params[1]);
+            circuit
+        });
 
-        let ansatz2 = ParameterizedCircuit::new(
-            2,
-            2,
-            move |params| {
-                let mut circuit = Circuit::new(2);
-                circuit.cnot(0, 1);
-                circuit.ry(0, params[0]);
-                circuit.rx(1, params[1]);
-                circuit
-            },
-        );
+        let ansatz2 = ParameterizedCircuit::new(2, 2, move |params| {
+            let mut circuit = Circuit::new(2);
+            circuit.cnot(0, 1);
+            circuit.ry(0, params[0]);
+            circuit.rx(1, params[1]);
+            circuit
+        });
 
         println!("\n⚠ PROBLEM: Different operation orders produce different circuits");
         println!("   PSR must correctly compute gradients for each structure!");
@@ -336,13 +333,19 @@ impl LogosQGradientBugDemo {
             .fold(0.0, f64::max);
 
         if diff1 > 1e-4 {
-            println!("⚠ WARNING: PSR vs FD mismatch in circuit 1! Max diff: {:.6}", diff1);
+            println!(
+                "⚠ WARNING: PSR vs FD mismatch in circuit 1! Max diff: {:.6}",
+                diff1
+            );
         } else {
             println!("✓ Circuit 1: PSR matches FD");
         }
 
         if diff2 > 1e-4 {
-            println!("⚠ WARNING: PSR vs FD mismatch in circuit 2! Max diff: {:.6}", diff2);
+            println!(
+                "⚠ WARNING: PSR vs FD mismatch in circuit 2! Max diff: {:.6}",
+                diff2
+            );
         } else {
             println!("✓ Circuit 2: PSR matches FD");
         }
@@ -375,32 +378,34 @@ impl LogosQGradientBugDemo {
         println!("BUG 6: Complex VQC Training Failure Scenario");
         println!("{}", "=".repeat(70));
 
-        let ansatz = ParameterizedCircuit::new(
-            4,
-            8,
-            move |params| {
-                let mut circuit = Circuit::new(4);
-                for i in 0..4 {
-                    circuit.ry(i, params[i.min(1)]);
-                }
-                circuit.rx(0, params[0]);
-                circuit.rx(1, params[1]);
-                circuit.cnot(0, 1);
-                circuit.cnot(2, 3);
-                circuit.cnot(0, 2);
-                circuit.ry(0, params[2]);
-                circuit.ry(1, params[3]);
-                circuit.cry(1, 0, params[4]);
-                circuit.cry(3, 2, params[5]);
-                circuit.rz(0, params[6]);
-                circuit.rz(1, params[7]);
-                circuit
-            },
-        );
+        let ansatz = ParameterizedCircuit::new(4, 8, move |params| {
+            let mut circuit = Circuit::new(4);
+            for i in 0..4 {
+                circuit.ry(i, params[i.min(1)]);
+            }
+            circuit.rx(0, params[0]);
+            circuit.rx(1, params[1]);
+            circuit.cnot(0, 1);
+            circuit.cnot(2, 3);
+            circuit.cnot(0, 2);
+            circuit.ry(0, params[2]);
+            circuit.ry(1, params[3]);
+            circuit.cry(1, 0, params[4]);
+            circuit.cry(3, 2, params[5]);
+            circuit.rz(0, params[6]);
+            circuit.rz(1, params[7]);
+            circuit
+        });
 
         let mut obs = PauliObservable::new(4);
-        obs.add_term(PauliTerm::new(1.0, vec![Pauli::Z, Pauli::I, Pauli::I, Pauli::I]));
-        obs.add_term(PauliTerm::new(1.0, vec![Pauli::I, Pauli::Z, Pauli::I, Pauli::I]));
+        obs.add_term(PauliTerm::new(
+            1.0,
+            vec![Pauli::Z, Pauli::I, Pauli::I, Pauli::I],
+        ));
+        obs.add_term(PauliTerm::new(
+            1.0,
+            vec![Pauli::I, Pauli::Z, Pauli::I, Pauli::I],
+        ));
 
         let ps_method = ParameterShift::new();
         let params: Vec<f64> = (0..8).map(|i| (i as f64) * 0.1).collect();
@@ -436,7 +441,10 @@ impl LogosQGradientBugDemo {
 
             #[allow(clippy::manual_range_contains)]
             if grad_magnitude > 1e6 || grad_magnitude < 1e-10 {
-                println!("⚠ WARNING: Suspicious gradient magnitude: {:.6}", grad_magnitude);
+                println!(
+                    "⚠ WARNING: Suspicious gradient magnitude: {:.6}",
+                    grad_magnitude
+                );
             }
 
             // Simulate training step
@@ -475,29 +483,34 @@ impl LogosQGradientBugDemo {
         println!("TEST 7: Complex Training Scenario with Multiple Measurements");
         println!("{}", "=".repeat(70));
 
-        let ansatz = ParameterizedCircuit::new(
-            4,
-            8,
-            move |params| {
-                let mut circuit = Circuit::new(4);
-                for i in 0..4 {
-                    circuit.ry(i, params[i.min(3)]);
-                }
-                circuit.cnot(0, 1);
-                circuit.cnot(2, 3);
-                circuit.cnot(0, 2);
-                circuit.rx(0, params[4]);
-                circuit.rx(1, params[5]);
-                circuit.ry(2, params[6]);
-                circuit.ry(3, params[7]);
-                circuit
-            },
-        );
+        let ansatz = ParameterizedCircuit::new(4, 8, move |params| {
+            let mut circuit = Circuit::new(4);
+            for i in 0..4 {
+                circuit.ry(i, params[i.min(3)]);
+            }
+            circuit.cnot(0, 1);
+            circuit.cnot(2, 3);
+            circuit.cnot(0, 2);
+            circuit.rx(0, params[4]);
+            circuit.rx(1, params[5]);
+            circuit.ry(2, params[6]);
+            circuit.ry(3, params[7]);
+            circuit
+        });
 
         let mut hamiltonian = PauliObservable::new(4);
-        hamiltonian.add_term(PauliTerm::new(0.5, vec![Pauli::Z, Pauli::I, Pauli::I, Pauli::I]));
-        hamiltonian.add_term(PauliTerm::new(1.0, vec![Pauli::I, Pauli::Z, Pauli::I, Pauli::I]));
-        hamiltonian.add_term(PauliTerm::new(0.3, vec![Pauli::Z, Pauli::Z, Pauli::I, Pauli::I]));
+        hamiltonian.add_term(PauliTerm::new(
+            0.5,
+            vec![Pauli::Z, Pauli::I, Pauli::I, Pauli::I],
+        ));
+        hamiltonian.add_term(PauliTerm::new(
+            1.0,
+            vec![Pauli::I, Pauli::Z, Pauli::I, Pauli::I],
+        ));
+        hamiltonian.add_term(PauliTerm::new(
+            0.3,
+            vec![Pauli::Z, Pauli::Z, Pauli::I, Pauli::I],
+        ));
 
         let ps_method = ParameterShift::new();
         let params: Vec<f64> = (0..8).map(|i| (i as f64 + 1.0) * 0.1).collect();
@@ -524,11 +537,8 @@ impl LogosQGradientBugDemo {
 
             // Check gradient variance
             let grad_mean: f64 = grad.iter().sum::<f64>() / grad.len() as f64;
-            let grad_var: f64 = grad
-                .iter()
-                .map(|g| (g - grad_mean).powi(2))
-                .sum::<f64>()
-                / grad.len() as f64;
+            let grad_var: f64 =
+                grad.iter().map(|g| (g - grad_mean).powi(2)).sum::<f64>() / grad.len() as f64;
 
             println!("  Gradient variance: {:.6}", grad_var);
 

@@ -19,7 +19,7 @@ num-complex = "0.4"
 criterion = { version = "0.5", features = ["html_reports"] }
 rayon = "1.7"
 nalgebra = "0.32"
-logosq = "0.2.1"
+logosq = "0.2.3"
 tqdm = "0.8.0"
 
 [[example]]
@@ -29,3 +29,7 @@ path = "QuantumFourierTransform/qft_benchmark_simple.rs"
 [[example]]
 name = "vqa"
 path = "VQA/vqa.rs"
+
+[[example]]
+name = "xyz_heisenberg"
+path = "XYZHeisenberg/xyz_h.rs"
