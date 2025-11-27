@@ -1,248 +1,119 @@
 # LogosQ Quantum Computing Benchmarks
 
-A comprehensive benchmarking suite for comparing quantum computing libraries including LogosQ (Rust), Yao.jl, C++, PennyLane, and Qiskit. This project provides Docker containerization, memory usage monitoring, and interactive D3.js visualizations.
+A comprehensive benchmarking suite for comparing quantum computing libraries including LogosQ (Rust), Yao.jl (Julia), PennyLane (Python), and Qiskit (Python). This project evaluates performance across various quantum algorithms and provides tools for analysis and visualization.
 
 ## Features
 
-- **Multi-Library Support**: Benchmarks LogosQ, Yao.jl, C++, PennyLane, and Qiskit
-- **Docker Containerization**: Complete environment setup with single command
-- **Memory Monitoring**: Real-time memory usage tracking during benchmarks
-- **Interactive Visualization**: D3.js dashboard for analyzing results
-- **Comprehensive Metrics**: Execution time, memory usage, circuit depth analysis
-- **Multiple Benchmark Types**: GHZ states, random circuits, QFT implementations
+- **Multi-Library Support**: Benchmarks LogosQ, Yao.jl, PennyLane, and Qiskit.
+- **Comprehensive Metrics**: Execution time, energy accuracy (VQE), and resource usage.
+- **Multiple Benchmark Types**:
+    - **GHZ States**: Entanglement generation performance.
+    - **Random Circuits**: General circuit simulation capabilities.
+    - **Quantum Fourier Transform (QFT)**: O(n²) algorithm scaling.
+    - **Variational Quantum Eigensolver (VQE)**: Hybrid quantum-classical optimization for H₂ chemistry, including parameter sweeps.
+    - **Gradient Differentiation**: Verification of automatic differentiation correctness and memory safety.
+- **Reproducibility**: Standardized seeds, optimizers, and circuit structures for fair comparison.
+- **Visualization**: Python-based plotting scripts for generating publication-quality figures.
+
+## Use Cases
+
+This benchmarking suite is designed for researchers, developers, and educators who need to:
+
+1. **Compare Framework Performance**: Objectively evaluate which library (LogosQ, Qiskit, PennyLane, Yao.jl) performs best for specific quantum tasks like state preparation, VQE, or QFT.
+2. **Resource Planning**: Estimate memory and CPU requirements for simulating quantum circuits of varying sizes.
+3. **Algorithm Optimization**: Analyze runtime scaling and memory overhead to optimize quantum algorithms before deployment.
+4. **Simulator Selection**: Choose the appropriate simulation backend based on circuit depth and qubit count.
+5. **Educational Analysis**: Visualize and demonstrate the computational complexity differences between various quantum simulation approaches.
 
 ## Quick Start
 
-### Using Docker (Recommended)
+### Prerequisites
 
-1. Clone the repository:
-```bash
-git clone https://github.com/zazabap/LogosQBenchmarks
-cd LogosQBenchmarks
-```
+- **Rust**: Latest stable toolchain
+- **Julia**: 1.6+ (with `Yao`, `BenchmarkTools`, `JSON`)
+- **Python**: 3.8+ (with `pennylane`, `qiskit`, `matplotlib`, `numpy`, `scipy`, `psutil`)
 
-2. Build and run the complete benchmark suite:
-```bash
-docker-compose up --build
-```
+### Running Benchmarks
 
-3. Access the visualization dashboard at `http://localhost:8080`
+The `scripts/` directory contains shell scripts to orchestrate benchmarks for different algorithms.
 
-### Manual Setup
+1. **VQE Parameter Sweep (H₂)**:
+   Runs VQE optimization across LogosQ, Qiskit, PennyLane, and Yao.jl with varying ansatz depths (12-28 parameters).
+   ```bash
+   # Run the benchmark sweep
+   bash scripts/run_vqa_parameter_sweep.sh
+   
+   # Generate analysis plots
+   python3 scripts/plot_vqa_benchmark.py
+   ```
+   *Output*: JSON results and plots in `test_results/vqa_parameter_sweep/`
 
-#### Prerequisites
+2. **Quantum Fourier Transform (QFT)**:
+   Benchmarks QFT execution time and memory usage. Automatically generates comparison plots.
+   ```bash
+   bash scripts/run_qft_benchmark.sh
+   ```
+   *Output*: JSON results and comparison plots in `test_results/qft/`
 
-- Rust (latest stable)
-- Julia 1.6+
-- Python 3.8+
-- Node.js 16+
-- C++ compiler with CMake
-- Essential build tools
-
-#### Installation
-
-1. **Install Rust dependencies:**
-```bash
-cd rust
-cargo build --release
-```
-
-2. **Install Julia dependencies:**
-```bash
-julia -e 'using Pkg; Pkg.add(["Yao", "BenchmarkTools", "JSON", "CSV", "DataFrames"])'
-```
-
-3. **Install Python dependencies:**
-```bash
-pip install pennylane qiskit matplotlib pandas numpy psutil
-```
-
-4. **Build C++ components:**
-```bash
-cd cpp
-mkdir build && cd build
-cmake ..
-make
-```
-
-5. **Install visualization dependencies:**
-```bash
-cd visualization
-npm install
-```
-
-#### Running Benchmarks
-
-1. **Run all benchmarks:**
-```bash
-./run_benchmarks.sh
-```
-
-2. **Run specific library benchmarks:**
-```bash
-# LogosQ (Rust)
-cd rust && cargo run --release
-
-# Yao.jl
-cd julia && julia yao_benchmark.jl
-
-# C++
-cd cpp/build && ./cpp_benchmark
-
-# PennyLane
-cd python && python pennylane_benchmark.py
-
-# Qiskit
-cd python && python qiskit_benchmark.py
-```
-
-3. **Start visualization server:**
-```bash
-cd visualization
-npm start
-```
+3. **Gradient Calculation Tests**:
+   Verifies the correctness of gradient calculations across frameworks.
+   ```bash
+   bash scripts/run_gradient_tests.sh
+   ```
+   *Output*: Test logs in `test_results/gradient/`
 
 ## Project Structure
 
 ```
 LogosQBenchmarks/
-├── rust/                     # LogosQ Rust implementation
-│   ├── src/
-│   │   ├── lib.rs            # Core quantum simulation library
-│   │   └── main.rs           # Benchmark runner
-│   └── Cargo.toml
-├── julia/                    # Yao.jl benchmarks
-│   └── yao_benchmark.jl
-├── cpp/                      # C++ quantum simulator
-│   ├── src/
-│   │   ├── quantum_simulator.hpp
-│   │   ├── quantum_simulator.cpp
-│   │   └── main.cpp
-│   └── CMakeLists.txt
-├── python/                   # Python benchmarks
-│   ├── qiskit_benchmark.py
-│   └── pennylane_benchmark.py
-├── visualization/            # D3.js dashboard
-│   ├── public/
-│   │   ├── index.html
-│   │   ├── dashboard.js
-│   │   └── styles.css
-│   ├── server.js
-│   └── package.json
-├── scripts/                  # Utility scripts
-│   └── combine_results.py
-├── results/                  # Benchmark outputs (created at runtime)
-├── logs/                     # Memory usage logs (created at runtime)
-├── docker-compose.yml        # Docker orchestration
-├── Dockerfile               # Container definition
-└── run_benchmarks.sh        # Main benchmark runner
+├── logosq/                     # LogosQ (Rust) implementation
+│   ├── src/                    # Source code
+│   ├── VQA/                    # VQE benchmark implementation
+│   ├── QuantumFourierTransform/# QFT benchmark implementation
+│   └── MemoryCircuitDifferentiation/ # Gradient correctness tests
+├── qiskit/                     # Qiskit (Python) benchmarks
+│   ├── VQA/                    # VQE implementation
+│   ├── QuantumFourierTransform/# QFT benchmark implementation
+│   └── MemoryDifferentiation/  # Gradient correctness tests
+├── pennylane/                  # PennyLane (Python) benchmarks
+│   ├── VQA/                    # VQE implementation
+│   ├── QuantumFourierTransform/# QFT benchmark implementation
+│   └── MemoryCicuitDifferentiation/ # Gradient correctness tests
+├── yao.jl/                     # Yao.jl (Julia) benchmarks
+│   ├── VQA/                    # VQE implementation
+│   ├── QuantumFourierTransform/# QFT benchmark implementation
+│   └── MemoryCircuitDifferentiation/ # Gradient correctness tests
+├── scripts/                    # Orchestration and plotting scripts
+│   ├── run_vqa_parameter_sweep.sh
+│   ├── plot_vqa_benchmark.py
+│   ├── run_qft_benchmark.sh
+│   ├── plot_qft_comparison.py
+│   └── run_gradient_tests.sh
+├── test_results/               # Generated benchmark results and plots
+│   ├── vqa_parameter_sweep/
+│   ├── qft/
+│   └── gradient/
+└── summary/                    # Visualization dashboard (web-based)
 ```
 
-## Benchmark Types
+## Benchmark Details
 
-### 1. GHZ States
-Tests creation of maximally entangled states: |000...0⟩ + |111...1⟩
+### Variational Quantum Eigensolver (VQE)
+Benchmarks hybrid quantum-classical optimization finding the ground state energy of the H₂ molecule (STO-3G basis).
+- **Hamiltonian**: H₂ at 0.735 Å (mapped via Jordan-Wigner).
+- **Ansatz**: Hardware-efficient (Ry rotations + linear CNOT entanglement).
+- **Optimizer**: Adam (lr=0.01, tol=1e-7).
+- **Metrics**: Exact energy error, number of iterations, total runtime.
 
-### 2. Random Circuits
-Evaluates performance on circuits with random single-qubit gates and CNOT gates
+### Quantum Fourier Transform (QFT)
+Benchmarks the quantum algorithm with O(n²) complexity, testing simulation speed and memory management for increasing qubit counts.
 
-### 3. Quantum Fourier Transform (QFT)
-Benchmarks the quantum algorithm with O(n²) complexity
-
-## Visualization Dashboard
-
-The D3.js dashboard provides four main views:
-
-1. **Performance**: Execution time comparisons with filtering options
-2. **Memory**: Memory usage analysis and scaling with qubit count
-3. **Scalability**: Performance scaling and circuit depth analysis
-4. **Summary**: Overall library comparison and rankings
-
-### Dashboard Features
-
-- Interactive filtering by benchmark type
-- Logarithmic/linear scale options
-- Detailed tooltips with comprehensive metrics
-- Responsive design for different screen sizes
-- Real-time data loading from benchmark results
-
-## Memory Monitoring
-
-The system monitors memory usage during benchmark execution:
-
-- **Real-time tracking**: Memory usage sampled every 100ms
-- **Per-library logs**: Separate memory profiles for each library
-- **Visualization**: Memory usage trends in the dashboard
-- **Analysis**: Memory efficiency comparisons
-
-## Results Format
-
-Benchmark results are stored in JSON format with the following structure:
-
-```json
-{
-  "library": "LibraryName",
-  "version": "1.0.0",
-  "results": [
-    {
-      "name": "GHZ-8",
-      "num_qubits": 8,
-      "num_gates": 8,
-      "execution_time_ms": 42.5,
-      "memory_usage_mb": 12.3,
-      "circuit_depth": 2
-    }
-  ],
-  "total_time_ms": 1250.0
-}
-```
-
-## Configuration
-
-### Qubit Limits
-Default configuration tests up to 14 qubits to balance thoroughness with execution time. Modify `qubit_sizes` arrays in benchmark scripts to adjust.
-
-### Benchmark Parameters
-- **Random Circuit Gates**: 10 * num_qubits per circuit
-- **Memory Sampling**: Every 100ms during execution
-- **QFT Limit**: Up to 10 qubits due to complexity
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature-name`
-3. Add your improvements or new library support
-4. Run the benchmark suite to ensure compatibility
-5. Submit a pull request
-
-### Adding New Libraries
-
-To add support for a new quantum library:
-
-1. Create a new directory: `newlibrary/`
-2. Implement benchmark scripts following the existing pattern
-3. Update `run_benchmarks.sh` to include the new library
-4. Add library colors and configuration to `visualization/public/dashboard.js`
-5. Update documentation
-
-## Performance Notes
-
-- **Exponential Scaling**: Memory usage grows exponentially with qubit count
-- **Optimization Levels**: C++ and Rust use high optimization (-O3, --release)
-- **Simulator Backends**: Different libraries use different simulation backends
-- **Hardware Dependencies**: Performance may vary significantly across different hardware
-
-## System Requirements
-
-### Minimum
-- 4GB RAM
-- 2 CPU cores
-- 2GB disk space
-
-### Recommended
-- 16GB+ RAM for larger qubit counts
-- 8+ CPU cores for parallel execution
-- SSD for faster I/O
+### Gradient Calculation & Differentiation
+Validates the correctness of gradient computations for parameterized quantum circuits. Tests for specific issues such as:
+- Memory safety during differentiation (preventing segfaults/leaks).
+- Correct handling of complex coefficients.
+- Generator validity and operation broadcasting.
+- Numerical stability (NaN detection).
 
 ## License
 
@@ -260,14 +131,3 @@ If you use this benchmarking suite in your research, please cite:
   url={https://github.com/zazabap/LogosQBenchmarks}
 }
 ```
-
-## Support
-
-For issues, questions, or contributions:
-- Open an issue on GitHub
-- Check the documentation in each component directory
-- Review the Docker logs for debugging information
-
----
-
-**Note**: This benchmarking suite is designed for CPU-based quantum simulation. GPU acceleration and quantum hardware benchmarks are planned for future releases.
