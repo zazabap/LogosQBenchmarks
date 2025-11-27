@@ -50,6 +50,7 @@ FRAMEWORK_COLORS = {
     'Qiskit (Python)': '#457B9D',
     'PennyLane (Python)': '#F77F00',
     'Yao.jl (Julia)': '#2A9D8F',
+    'Q# (.NET)': '#884dff',
 }
 
 FRAMEWORK_MARKERS = {
@@ -57,6 +58,7 @@ FRAMEWORK_MARKERS = {
     'Qiskit (Python)': 's',
     'PennyLane (Python)': '^',
     'Yao.jl (Julia)': 'D',
+    'Q# (.NET)': 'X',
 }
 
 RESULTS_DIR = Path("/app/test_results/xyz_heisenberg")

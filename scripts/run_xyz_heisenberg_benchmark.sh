@@ -13,7 +13,7 @@ mkdir -p "$RESULTS_BASE_DIR" "$OUTPUT_DIR"
 # Qubit counts: 4, 5, 6, 7, 8, 9, 10, 11, 12
 QUBIT_COUNTS=(4 5 6 7 8 9 10 11 12)
 
-FRAMEWORKS=("logosq" "pennylane" "qiskit" "yao")
+FRAMEWORKS=("logosq" "pennylane" "qiskit" "yao" "qsharp")
 
 echo "=========================================="
 echo "XYZ Heisenberg Model Benchmark"
@@ -74,6 +74,17 @@ for framework in "${FRAMEWORKS[@]}"; do
                     echo "    ✗ Failed"
                 fi
                 ;;
+            qsharp)
+                if XYZ_QUBITS="$qubits" XYZ_OUTPUT_FILE="$output_file" dotnet run --project "${REPO_ROOT}/qsharp/XYZHeisenberg/XYZHeisenberg.csproj" --configuration Release > /dev/null 2>&1; then
+                    if [ -f "$output_file" ]; then
+                        echo "    ✓ Completed"
+                    else
+                        echo "    ✗ JSON file not found"
+                    fi
+                else
+                    echo "    ✗ Failed"
+                fi
+                ;;
         esac
     done
     echo ""
@@ -90,7 +101,7 @@ import os
 script_dir = "${SCRIPT_DIR}"
 output_dir = "${OUTPUT_DIR}"
 
-frameworks = ["logosq", "pennylane", "qiskit", "yao"]
+frameworks = ["logosq", "pennylane", "qiskit", "yao", "qsharp"]
 qubit_counts = [4, 5, 6, 7, 8, 9, 10, 11, 12]
 
 results = []
