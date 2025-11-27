@@ -328,11 +328,11 @@ def main():
     """Main benchmarking function"""
     benchmark = QFTBenchmark()
     
-    # Standardized benchmark: 1-10 qubits, 5 trials each
-    qubit_range = range(1, 11)
+    # Standardized benchmark: 1-12 qubits, 5 trials each
+    qubit_range = range(1, 13)
     trials = 5
     
-    print("🎯 Running standardized QFT benchmark: 1 to 10 qubits, {} trials each".format(trials))
+    print("🎯 Running standardized QFT benchmark: 1 to 12 qubits, {} trials each".format(trials))
     
     # Run benchmark
     benchmark.run_comprehensive_benchmark(qubit_range, trials)

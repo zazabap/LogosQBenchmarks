@@ -22,7 +22,7 @@ NC='\033[0m' # No Color
 
 # Track which benchmarks succeeded
 SUCCESS_COUNT=0
-TOTAL_COUNT=4
+TOTAL_COUNT=5
 
 # Function to print status
 print_status() {
@@ -228,6 +228,29 @@ else
     print_status "SKIP" "Julia not available, skipping Yao.jl benchmark"
 fi
 
+# 5. Run Q# (.NET) benchmark
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "5/5 Running Q# (.NET) QFT Benchmark..."
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+if command -v dotnet &> /dev/null; then
+    QSHARP_PROJECT="${REPO_ROOT}/qsharp/QuantumFourierTransform/QFT.csproj"
+    
+    # Build first to separate build time from run time
+    dotnet build -c Release "$QSHARP_PROJECT" > /dev/null
+    
+    if QFT_OUTPUT_DIR="${RESULTS_DIR}" dotnet run --project "$QSHARP_PROJECT" --configuration Release -- 1 12 > /tmp/qsharp_qft_benchmark.log 2>&1; then
+        print_status "SUCCESS" "Q# benchmark completed"
+        SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
+        # Result file is already written to RESULTS_DIR by the C# program
+    else
+        print_status "FAIL" "Q# benchmark failed (check /tmp/qsharp_qft_benchmark.log)"
+        cat /tmp/qsharp_qft_benchmark.log | tail -20
+    fi
+else
+    print_status "SKIP" "Dotnet not available, skipping Q# benchmark"
+fi
+
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "Benchmark Summary: $SUCCESS_COUNT/$TOTAL_COUNT libraries completed successfully"
@@ -246,6 +269,7 @@ if command -v python3 &> /dev/null; then
         "${RESULTS_DIR}/pennylane_qft_benchmark_results.json"
         "${RESULTS_DIR}/qiskit_qft_benchmark_results.json"
         "${RESULTS_DIR}/yao_qft_benchmark_results.json"
+        "${RESULTS_DIR}/qsharp_qft_benchmark_results.json"
     )
     
     FOUND_COUNT=0
@@ -273,7 +297,7 @@ if command -v python3 &> /dev/null; then
         echo ""
         echo "Location: ${RESULTS_DIR}"
     else
-        print_status "FAIL" "Plot generation failed (check /tmp/qft_plot_generation.log)"`
+        print_status "FAIL" "Plot generation failed (check /tmp/qft_plot_generation.log)"
         cat /tmp/qft_plot_generation.log | tail -30  # Show last 30 lines for debugging
         echo ""
         echo "Note: Plots will still be generated if at least one benchmark result file exists."

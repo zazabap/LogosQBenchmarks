@@ -1,28 +1,28 @@
 {
   "benchmark_info": {
-    "timestamp": 1764059368.4582486,
+    "timestamp": 1764249278.3740644,
     "system_info": {
       "cpu_count": 8,
       "memory_gb": 15.28,
       "python_version": "3.10.12",
       "pennylane_version": "0.42.3"
     },
-    "total_tests": 10
+    "total_tests": 12
   },
   "results": [
     {
       "qft_only": {
         "n_qubits": 1,
         "execution_time_ms": {
-          "mean": 1.1300869926344603,
-          "std": 0.0254125144539294,
-          "min": 1.101608999306336,
-          "max": 1.1672439868561924,
-          "median": 1.1160809954162687
+          "mean": 0.7944995886646211,
+          "std": 0.02312767005680431,
+          "min": 0.773612002376467,
+          "max": 0.8371139992959797,
+          "median": 0.7842069608159363
         },
         "memory_usage_mb": {
-          "before_mean": 125.65234375,
-          "after_mean": 125.65234375,
+          "before_mean": 125.5078125,
+          "after_mean": 125.5078125,
           "delta_mean": 0.0
         },
         "gate_counts": {
@@ -45,10 +45,10 @@
       "qft_inverse": {
         "n_qubits": 1,
         "execution_time_ms": {
-          "mean": 1.2344032002147287,
-          "std": 0.029912441973749555,
-          "min": 1.1977189860772341,
-          "max": 1.2675769976340234
+          "mean": 0.8276302018202841,
+          "std": 0.010686185948423644,
+          "min": 0.8143620216287673,
+          "max": 0.8440000237897038
         },
         "fidelity": {
           "mean": 0.9999999999999997,
@@ -58,21 +58,21 @@
         "total_gates": 3,
         "circuit_depth": 3
       },
-      "timestamp": 1764059366.9048562
+      "timestamp": 1764249276.7338414
     },
     {
       "qft_only": {
         "n_qubits": 2,
         "execution_time_ms": {
-          "mean": 1.8134256068151444,
-          "std": 0.09105051153719243,
-          "min": 1.730282005155459,
-          "max": 1.9871130061801523,
-          "median": 1.7892300093080848
+          "mean": 1.2845278019085526,
+          "std": 0.05020146827847613,
+          "min": 1.218194025568664,
+          "max": 1.370005018543452,
+          "median": 1.2744319974444807
         },
         "memory_usage_mb": {
-          "before_mean": 126.4453125,
-          "after_mean": 126.4453125,
+          "before_mean": 126.40625,
+          "after_mean": 126.40625,
           "delta_mean": 0.0
         },
         "gate_counts": {
@@ -97,10 +97,10 @@
       "qft_inverse": {
         "n_qubits": 2,
         "execution_time_ms": {
-          "mean": 2.640303794760257,
-          "std": 0.13890009921429503,
-          "min": 2.521568996598944,
-          "max": 2.8975839959457517
+          "mean": 1.6667861840687692,
+          "std": 0.011337921863002599,
+          "min": 1.6474630101583898,
+          "max": 1.682929985690862
         },
         "fidelity": {
           "mean": 0.0,
@@ -110,21 +110,21 @@
         "total_gates": 9,
         "circuit_depth": 9
       },
-      "timestamp": 1764059366.934631
+      "timestamp": 1764249276.7533998
     },
     {
       "qft_only": {
         "n_qubits": 3,
         "execution_time_ms": {
-          "mean": 2.849155606236309,
-          "std": 0.10927534142096469,
-          "min": 2.758818998700008,
-          "max": 3.048220998607576,
-          "median": 2.777593006612733
+          "mean": 1.7829521908424795,
+          "std": 0.03750765333782973,
+          "min": 1.7190450453199446,
+          "max": 1.8314659828320146,
+          "median": 1.7823269590735435
         },
         "memory_usage_mb": {
-          "before_mean": 126.4453125,
-          "after_mean": 126.4453125,
+          "before_mean": 126.40625,
+          "after_mean": 126.40625,
           "delta_mean": 0.0
         },
         "gate_counts": {
@@ -149,10 +149,10 @@
       "qft_inverse": {
         "n_qubits": 3,
         "execution_time_ms": {
-          "mean": 4.1252508061006665,
-          "std": 0.1060168734053211,
-          "min": 3.9948460180312395,
-          "max": 4.259198001818731
+          "mean": 2.642480586655438,
+          "std": 0.09815297810256225,
+          "min": 2.544460992794484,
+          "max": 2.8040409670211375
         },
         "fidelity": {
           "mean": 0.0,
@@ -162,21 +162,21 @@
         "total_gates": 15,
         "circuit_depth": 15
       },
-      "timestamp": 1764059366.97921
+      "timestamp": 1764249276.7815638
     },
     {
       "qft_only": {
         "n_qubits": 4,
         "execution_time_ms": {
-          "mean": 3.85863539413549,
-          "std": 0.06697598149123508,
-          "min": 3.7431079836096615,
-          "max": 3.951174992835149,
-          "median": 3.8738540024496615
+          "mean": 2.443233202211559,
+          "std": 0.08636872530333364,
+          "min": 2.347474975977093,
+          "max": 2.575282007455826,
+          "median": 2.4352570180781186
         },
         "memory_usage_mb": {
-          "before_mean": 126.5703125,
-          "after_mean": 126.5703125,
+          "before_mean": 126.53125,
+          "after_mean": 126.53125,
           "delta_mean": 0.0
         },
         "gate_counts": {
@@ -201,10 +201,10 @@
       "qft_inverse": {
         "n_qubits": 4,
         "execution_time_ms": {
-          "mean": 6.536283000605181,
-          "std": 0.1054732319052095,
-          "min": 6.411286012735218,
-          "max": 6.697531993268058
+          "mean": 3.965204395353794,
+          "std": 0.07974863773148679,
+          "min": 3.883533994667232,
+          "max": 4.0939010214060545
         },
         "fidelity": {
           "mean": 0.0,
@@ -214,21 +214,21 @@
         "total_gates": 25,
         "circuit_depth": 25
       },
-      "timestamp": 1764059367.0438144
+      "timestamp": 1764249276.821383
     },
     {
       "qft_only": {
         "n_qubits": 5,
         "execution_time_ms": {
-          "mean": 5.374629801372066,
-          "std": 0.06545681095108884,
-          "min": 5.282386002363637,
-          "max": 5.481336003867909,
-          "median": 5.357157002435997
+          "mean": 3.3049877965822816,
+          "std": 0.06189929699288621,
+          "min": 3.252506023272872,
+          "max": 3.4000350278802216,
+          "median": 3.2604209845885634
         },
         "memory_usage_mb": {
-          "before_mean": 126.6953125,
-          "after_mean": 126.6953125,
+          "before_mean": 126.65625,
+          "after_mean": 126.65625,
           "delta_mean": 0.0
         },
         "gate_counts": {
@@ -253,10 +253,10 @@
       "qft_inverse": {
         "n_qubits": 5,
         "execution_time_ms": {
-          "mean": 20.282979996409267,
-          "std": 19.02184420250068,
-          "min": 9.984172007534653,
-          "max": 58.294716000091285
+          "mean": 14.929373213090003,
+          "std": 15.134698629718615,
+          "min": 6.035574013367295,
+          "max": 45.145128038711846
         },
         "fidelity": {
           "mean": 0.0,
@@ -266,21 +266,21 @@
         "total_gates": 35,
         "circuit_depth": 35
       },
-      "timestamp": 1764059367.1891134
+      "timestamp": 1764249276.9234824
     },
     {
       "qft_only": {
         "n_qubits": 6,
         "execution_time_ms": {
-          "mean": 7.407696987502277,
-          "std": 0.1444430637515906,
-          "min": 7.2626330074854195,
-          "max": 7.625159982126206,
-          "median": 7.342232973314822
+          "mean": 5.0830041989684105,
+          "std": 0.09443485372495529,
+          "min": 4.94473404251039,
+          "max": 5.2098510204814374,
+          "median": 5.099656991660595
         },
         "memory_usage_mb": {
-          "before_mean": 126.6953125,
-          "after_mean": 126.6953125,
+          "before_mean": 126.65625,
+          "after_mean": 126.65625,
           "delta_mean": 0.0
         },
         "gate_counts": {
@@ -305,10 +305,10 @@
       "qft_inverse": {
         "n_qubits": 6,
         "execution_time_ms": {
-          "mean": 13.348966202465817,
-          "std": 0.37399844675739835,
-          "min": 12.929151998832822,
-          "max": 13.817120023304597
+          "mean": 7.961572194471955,
+          "std": 0.2939140609378785,
+          "min": 7.664729957468808,
+          "max": 8.408912981394678
         },
         "fidelity": {
           "mean": 0.0,
@@ -318,21 +318,21 @@
         "total_gates": 49,
         "circuit_depth": 49
       },
-      "timestamp": 1764059367.3162909
+      "timestamp": 1764249277.00449
     },
     {
       "qft_only": {
         "n_qubits": 7,
         "execution_time_ms": {
-          "mean": 9.535708191106096,
-          "std": 0.0437135335830351,
-          "min": 9.479484026087448,
-          "max": 9.600849996786565,
-          "median": 9.534416982205585
+          "mean": 5.522380804177374,
+          "std": 0.09952961304207503,
+          "min": 5.421869980636984,
+          "max": 5.65622397698462,
+          "median": 5.483943037688732
         },
         "memory_usage_mb": {
-          "before_mean": 126.8203125,
-          "after_mean": 126.8203125,
+          "before_mean": 126.78125,
+          "after_mean": 126.78125,
           "delta_mean": 0.0
         },
         "gate_counts": {
@@ -357,10 +357,10 @@
       "qft_inverse": {
         "n_qubits": 7,
         "execution_time_ms": {
-          "mean": 18.08122179354541,
-          "std": 0.1284385496588611,
-          "min": 17.919915000675246,
-          "max": 18.236829986562952
+          "mean": 10.314967401791364,
+          "std": 0.06494180137962295,
+          "min": 10.200681048445404,
+          "max": 10.402104002423584
         },
         "fidelity": {
           "mean": 0.0,
@@ -370,21 +370,21 @@
         "total_gates": 63,
         "circuit_depth": 63
       },
-      "timestamp": 1764059367.4847937
+      "timestamp": 1764249277.101328
     },
     {
       "qft_only": {
         "n_qubits": 8,
         "execution_time_ms": {
-          "mean": 12.261556199518964,
-          "std": 0.10211320025835885,
-          "min": 12.113923992728814,
-          "max": 12.395480996929109,
-          "median": 12.283851014217362
+          "mean": 7.248420198448002,
+          "std": 0.016958001379769404,
+          "min": 7.218138023745269,
+          "max": 7.268351968377829,
+          "median": 7.255523989442736
         },
         "memory_usage_mb": {
-          "before_mean": 126.9453125,
-          "after_mean": 126.9453125,
+          "before_mean": 126.90625,
+          "after_mean": 126.90625,
           "delta_mean": 0.0
         },
         "gate_counts": {
@@ -409,10 +409,10 @@
       "qft_inverse": {
         "n_qubits": 8,
         "execution_time_ms": {
-          "mean": 23.590303194941953,
-          "std": 0.14172689420860968,
-          "min": 23.41512599377893,
-          "max": 23.737574985716492
+          "mean": 13.898294989485294,
+          "std": 0.17951882902789382,
+          "min": 13.73444899218157,
+          "max": 14.24813998164609
         },
         "fidelity": {
           "mean": 0.0,
@@ -422,21 +422,21 @@
         "total_gates": 81,
         "circuit_depth": 81
       },
-      "timestamp": 1764059367.7033193
+      "timestamp": 1764249277.2297173
     },
     {
       "qft_only": {
         "n_qubits": 9,
         "execution_time_ms": {
-          "mean": 15.89224620256573,
-          "std": 0.24726810395987622,
-          "min": 15.682350000133738,
-          "max": 16.348406992619857,
-          "median": 15.739798021968454
+          "mean": 9.31243080412969,
+          "std": 0.05865427376744305,
+          "min": 9.246985020581633,
+          "max": 9.402869967743754,
+          "median": 9.30808502016589
         },
         "memory_usage_mb": {
-          "before_mean": 127.0703125,
-          "after_mean": 127.0703125,
+          "before_mean": 127.03125,
+          "after_mean": 127.03125,
           "delta_mean": 0.0
         },
         "gate_counts": {
@@ -461,10 +461,10 @@
       "qft_inverse": {
         "n_qubits": 9,
         "execution_time_ms": {
-          "mean": 31.530973996268585,
-          "std": 0.2116049327978087,
-          "min": 31.12083100131713,
-          "max": 31.71749599277973
+          "mean": 18.368139397352934,
+          "std": 0.04466964370423154,
+          "min": 18.321734969504178,
+          "max": 18.444982008077204
         },
         "fidelity": {
           "mean": 0.0,
@@ -474,21 +474,21 @@
         "total_gates": 99,
         "circuit_depth": 99
       },
-      "timestamp": 1764059367.9905372
+      "timestamp": 1764249277.3977256
     },
     {
       "qft_only": {
         "n_qubits": 10,
         "execution_time_ms": {
-          "mean": 20.692820398835465,
-          "std": 0.23880168656910722,
-          "min": 20.397671003593132,
-          "max": 21.04664599755779,
-          "median": 20.5935449921526
+          "mean": 12.225360190495849,
+          "std": 0.12605573249129196,
+          "min": 12.089753989130259,
+          "max": 12.421583000104874,
+          "median": 12.182981998194009
         },
         "memory_usage_mb": {
-          "before_mean": 127.3203125,
-          "after_mean": 127.3203125,
+          "before_mean": 127.28125,
+          "after_mean": 127.28125,
           "delta_mean": 0.0
         },
         "gate_counts": {
@@ -513,10 +513,10 @@
       "qft_inverse": {
         "n_qubits": 10,
         "execution_time_ms": {
-          "mean": 59.189345996128395,
-          "std": 9.89382657862932,
-          "min": 42.81424797954969,
-          "max": 72.7021899947431
+          "mean": 26.402226788923144,
+          "std": 3.0147046809778018,
+          "min": 24.4506309973076,
+          "max": 32.397556002251804
         },
         "fidelity": {
           "mean": 0.0,
@@ -526,23 +526,127 @@
         "total_gates": 121,
         "circuit_depth": 121
       },
-      "timestamp": 1764059368.4582138
+      "timestamp": 1764249277.629771
+    },
+    {
+      "qft_only": {
+        "n_qubits": 11,
+        "execution_time_ms": {
+          "mean": 16.41810639994219,
+          "std": 0.12981136927954207,
+          "min": 16.280103009194136,
+          "max": 16.66510698851198,
+          "median": 16.382815956603736
+        },
+        "memory_usage_mb": {
+          "before_mean": 127.53125,
+          "after_mean": 127.53125,
+          "delta_mean": 0.0
+        },
+        "gate_counts": {
+          "theoretical": {
+            "Hadamard": 11,
+            "CRZ": 55,
+            "SWAP": 5,
+            "total": 71
+          },
+          "actual": {
+            "PauliX": 1,
+            "Hadamard": 11,
+            "CRZ": 55,
+            "SWAP": 5
+          },
+          "total_actual": 72
+        },
+        "circuit_depth": 72,
+        "state_vector_size": 2048,
+        "num_trials": 5
+      },
+      "qft_inverse": {
+        "n_qubits": 11,
+        "execution_time_ms": {
+          "mean": 36.201322986744344,
+          "std": 0.4600229203143836,
+          "min": 35.411863995250314,
+          "max": 36.71635396312922
+        },
+        "fidelity": {
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0
+        },
+        "total_gates": 143,
+        "circuit_depth": 143
+      },
+      "timestamp": 1764249277.9471283
+    },
+    {
+      "qft_only": {
+        "n_qubits": 12,
+        "execution_time_ms": {
+          "mean": 23.271670611575246,
+          "std": 0.13751963258072397,
+          "min": 23.105148982722312,
+          "max": 23.48676201654598,
+          "median": 23.236674023792148
+        },
+        "memory_usage_mb": {
+          "before_mean": 127.78125,
+          "after_mean": 127.78125,
+          "delta_mean": 0.0
+        },
+        "gate_counts": {
+          "theoretical": {
+            "Hadamard": 12,
+            "CRZ": 66,
+            "SWAP": 6,
+            "total": 84
+          },
+          "actual": {
+            "PauliX": 1,
+            "Hadamard": 12,
+            "CRZ": 66,
+            "SWAP": 6
+          },
+          "total_actual": 85
+        },
+        "circuit_depth": 85,
+        "state_vector_size": 4096,
+        "num_trials": 5
+      },
+      "qft_inverse": {
+        "n_qubits": 12,
+        "execution_time_ms": {
+          "mean": 47.60089460760355,
+          "std": 0.14342109907817482,
+          "min": 47.44261904852465,
+          "max": 47.84959298558533
+        },
+        "fidelity": {
+          "mean": 0.0,
+          "std": 0.0,
+          "min": 0.0
+        },
+        "total_gates": 169,
+        "circuit_depth": 169
+      },
+      "timestamp": 1764249278.3740413
     }
   ],
   "summary": {
     "execution_time_scaling": {
-      "min_time_ms": 1.1300869926344603,
-      "max_time_ms": 20.692820398835465,
-      "time_range_factor": 18.31082078964234
+      "min_time_ms": 0.7944995886646211,
+      "max_time_ms": 23.271670611575246,
+      "time_range_factor": 29.29097880426823
     },
     "gate_count_scaling": {
       "min_gates": 2,
-      "max_gates": 61,
-      "gates_range_factor": 30.5
+      "max_gates": 85,
+      "gates_range_factor": 42.5
     },
     "qubit_range": {
       "min_qubits": 1,
-      "max_qubits": 10
+      "max_qubits": 12
     }
   }
 }

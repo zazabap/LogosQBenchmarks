@@ -96,6 +96,17 @@ LIBRARIES = {
         'linewidth': 2.8,
         'alpha': 0.9,
         'file': str(RESULTS_DIR / 'yao_qft_benchmark_results.json')
+    },
+    'qsharp': {
+        'name': 'Q# (.NET)',
+        'color': '#884dff',  # Purple/Violet
+        'marker': 'X',
+        'markeredgecolor': '#5a32a8',
+        'markeredgewidth': 1.5,
+        'linestyle': '-',
+        'linewidth': 2.8,
+        'alpha': 0.9,
+        'file': str(RESULTS_DIR / 'qsharp_qft_benchmark_results.json')
     }
 }
 
@@ -165,6 +176,18 @@ def load_yao_results(filepath: str) -> List[Dict]:
         print(f"Error parsing Yao results: {e}")
         return []
 
+def load_qsharp_results(filepath: str) -> List[Dict]:
+    """Load Q# (.NET) benchmark results"""
+    try:
+        with open(filepath, 'r') as f:
+            data = json.load(f)
+            return data if isinstance(data, list) else data.get('results', [])
+    except FileNotFoundError:
+        return []
+    except json.JSONDecodeError as e:
+        print(f"Error parsing Q# results: {e}")
+        return []
+
 def extract_data(results: List[Dict], source: str) -> Tuple[List[int], List[float], List[float], List[float]]:
     """
     Extract qubit counts, execution times, time std dev, and memory usage.
@@ -208,6 +231,12 @@ def extract_data(results: List[Dict], source: str) -> Tuple[List[int], List[floa
             memory.append(result.get('memory_usage_mb', 0.0))
         elif source == 'yao':
             # Yao format (same as Rust): {n_qubits, execution_time_ms, std_deviation_ms, memory_mb, ...}
+            qubits.append(result['n_qubits'])
+            times.append(result['execution_time_ms'])
+            time_stds.append(result.get('std_deviation_ms', 0.0))
+            memory.append(result.get('memory_mb', 0.0))
+        elif source == 'qsharp':
+            # Q# format (similar to Rust/Yao)
             qubits.append(result['n_qubits'])
             times.append(result['execution_time_ms'])
             time_stds.append(result.get('std_deviation_ms', 0.0))
@@ -456,7 +485,8 @@ def main():
         'logosq': load_logosq_results,
         'pennylane': load_pennylane_results,
         'qiskit': load_qiskit_results,
-        'yao': load_yao_results
+        'yao': load_yao_results,
+        'qsharp': load_qsharp_results
     }
     
     for lib_id, loader in loaders.items():

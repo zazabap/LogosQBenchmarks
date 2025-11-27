@@ -1,92 +1,110 @@
 [
   {
-    "execution_time_ms": 0.0012412,
+    "execution_time_ms": 0.0008856000000000001,
     "memory_mb": 0.0,
-    "std_deviation_ms": 0.001857367750339173,
+    "std_deviation_ms": 0.0013036307145813954,
     "state_size": 2,
     "gate_count": 1,
     "fidelity": 0.9999999999999996,
     "n_qubits": 1
   },
   {
-    "execution_time_ms": 0.0235052,
+    "execution_time_ms": 0.0165868,
     "memory_mb": 0.0,
-    "std_deviation_ms": 0.024918678740254267,
+    "std_deviation_ms": 0.01804837705058269,
     "state_size": 4,
     "gate_count": 4,
     "fidelity": 0.9999999999999993,
     "n_qubits": 2
   },
   {
-    "execution_time_ms": 0.0286282,
+    "execution_time_ms": 0.0172126,
     "memory_mb": 0.0,
-    "std_deviation_ms": 0.005474351409984565,
+    "std_deviation_ms": 0.0038185013081050534,
     "state_size": 8,
     "gate_count": 7,
     "fidelity": 0.9999999999999991,
     "n_qubits": 3
   },
   {
-    "execution_time_ms": 0.051085000000000005,
+    "execution_time_ms": 0.032598,
     "memory_mb": 0.0,
-    "std_deviation_ms": 0.007526475376960987,
+    "std_deviation_ms": 0.004101832468543785,
     "state_size": 16,
     "gate_count": 12,
     "fidelity": 0.9999999999999987,
     "n_qubits": 4
   },
   {
-    "execution_time_ms": 0.0792368,
+    "execution_time_ms": 0.0522988,
     "memory_mb": 0.0,
-    "std_deviation_ms": 0.0017384277264240833,
+    "std_deviation_ms": 0.0010825864214925294,
     "state_size": 32,
     "gate_count": 17,
     "fidelity": 0.9999999999999984,
     "n_qubits": 5
   },
   {
-    "execution_time_ms": 0.1303588,
-    "memory_mb": 2.359375,
-    "std_deviation_ms": 0.00718203167355867,
+    "execution_time_ms": 0.07899199999999999,
+    "memory_mb": 12.7421875,
+    "std_deviation_ms": 0.004687743124361658,
     "state_size": 64,
     "gate_count": 24,
     "fidelity": 0.999999999999998,
     "n_qubits": 6
   },
   {
-    "execution_time_ms": 0.188715,
-    "memory_mb": 13.375,
-    "std_deviation_ms": 0.008774948911532191,
+    "execution_time_ms": 0.1207902,
+    "memory_mb": 32.5,
+    "std_deviation_ms": 0.0020958501282295873,
     "state_size": 128,
     "gate_count": 31,
     "fidelity": 0.9999999999999978,
     "n_qubits": 7
   },
   {
-    "execution_time_ms": 0.2550388,
-    "memory_mb": 0.5,
-    "std_deviation_ms": 0.007365784341127567,
+    "execution_time_ms": 0.1651274,
+    "memory_mb": 0.0,
+    "std_deviation_ms": 0.007670136937499877,
     "state_size": 256,
     "gate_count": 40,
     "fidelity": 0.9999999999999976,
     "n_qubits": 8
   },
   {
-    "execution_time_ms": 0.3711352,
+    "execution_time_ms": 0.2255542,
     "memory_mb": 0.0,
-    "std_deviation_ms": 0.04696075952281864,
+    "std_deviation_ms": 0.002912260798760994,
     "state_size": 512,
     "gate_count": 49,
     "fidelity": 0.9999999999999971,
     "n_qubits": 9
   },
   {
-    "execution_time_ms": 0.5002547999999999,
+    "execution_time_ms": 0.3278632,
     "memory_mb": 0.0,
-    "std_deviation_ms": 0.009651645567466739,
+    "std_deviation_ms": 0.002987680933433162,
     "state_size": 1024,
     "gate_count": 60,
     "fidelity": 0.9999999999999969,
     "n_qubits": 10
+  },
+  {
+    "execution_time_ms": 0.5176054,
+    "memory_mb": 0.0,
+    "std_deviation_ms": 0.0437578808609375,
+    "state_size": 2048,
+    "gate_count": 71,
+    "fidelity": 0.9999999999999964,
+    "n_qubits": 11
+  },
+  {
+    "execution_time_ms": 0.8077176000000001,
+    "memory_mb": 0.0,
+    "std_deviation_ms": 0.008233657039250566,
+    "state_size": 4096,
+    "gate_count": 84,
+    "fidelity": 0.9999999999999962,
+    "n_qubits": 12
   }
 ]
