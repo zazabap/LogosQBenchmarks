@@ -78,6 +78,12 @@ def load_results(json_path: Path) -> List[Dict]:
 
 def plot_runtime_comparison(results: List[Dict], output_dir: Path):
     """Plot runtime vs number of qubits for all frameworks."""
+    if not results:
+        print("No results provided to plot_runtime_comparison.")
+        return
+
+    all_qubits = sorted({r['qubits'] for r in results})
+
     # Group results by framework
     frameworks = {}
     for r in results:
@@ -105,7 +111,7 @@ def plot_runtime_comparison(results: List[Dict], output_dir: Path):
     plt.yscale('log')
     plt.grid(True, alpha=0.3, linestyle='--', which='both')
     plt.legend(loc='best', framealpha=0.95)
-    plt.xticks(range(4, 13))
+    plt.xticks(all_qubits)
     plt.tight_layout()
     output_path = output_dir / 'xyz_heisenberg_runtime_comparison.png'
     plt.savefig(output_path)
@@ -115,6 +121,12 @@ def plot_runtime_comparison(results: List[Dict], output_dir: Path):
 
 def plot_energy_evolution(results: List[Dict], output_dir: Path):
     """Plot energy evolution (initial, final, and change) vs number of qubits."""
+    if not results:
+        print("No results provided to plot_energy_evolution.")
+        return
+
+    all_qubits = sorted({r['qubits'] for r in results})
+
     # Group results by framework
     frameworks = {}
     for r in results:
@@ -143,7 +155,7 @@ def plot_energy_evolution(results: List[Dict], output_dir: Path):
     ax.set_title('Initial Energy vs Qubits', fontweight='bold')
     ax.grid(True, alpha=0.3, linestyle='--')
     ax.legend(loc='best', framealpha=0.95, fontsize=9)
-    ax.set_xticks(range(4, 13))
+    ax.set_xticks(all_qubits)
     
     # Plot 2: Final Energy
     ax = axes[1]
@@ -159,7 +171,7 @@ def plot_energy_evolution(results: List[Dict], output_dir: Path):
     ax.set_title('Final Energy vs Qubits', fontweight='bold')
     ax.grid(True, alpha=0.3, linestyle='--')
     ax.legend(loc='best', framealpha=0.95, fontsize=9)
-    ax.set_xticks(range(4, 13))
+    ax.set_xticks(all_qubits)
     
     # Plot 3: Energy Change
     ax = axes[2]
@@ -176,7 +188,7 @@ def plot_energy_evolution(results: List[Dict], output_dir: Path):
     ax.grid(True, alpha=0.3, linestyle='--')
     ax.axhline(y=0, color='black', linestyle='--', linewidth=1, alpha=0.5)
     ax.legend(loc='best', framealpha=0.95, fontsize=9)
-    ax.set_xticks(range(4, 13))
+    ax.set_xticks(all_qubits)
     
     plt.suptitle('XYZ Heisenberg Model: Energy Evolution', fontweight='bold', fontsize=16, y=1.02)
     plt.tight_layout()
@@ -188,6 +200,11 @@ def plot_energy_evolution(results: List[Dict], output_dir: Path):
 
 def plot_scaling_analysis(results: List[Dict], output_dir: Path):
     """Plot scaling analysis showing exponential growth in runtime."""
+    if not results:
+        print("No results provided to plot_scaling_analysis.")
+        return
+
+    all_qubits = sorted({r['qubits'] for r in results})
     # Group results by framework
     frameworks = {}
     for r in results:
@@ -216,7 +233,7 @@ def plot_scaling_analysis(results: List[Dict], output_dir: Path):
     ax.set_title('Runtime Scaling (Linear Scale)', fontweight='bold')
     ax.grid(True, alpha=0.3, linestyle='--')
     ax.legend(loc='best', framealpha=0.95)
-    ax.set_xticks(range(4, 13))
+    ax.set_xticks(all_qubits)
     
     # Plot 2: Runtime on log scale with theoretical exponential
     ax = axes[1]
@@ -235,14 +252,14 @@ def plot_scaling_analysis(results: List[Dict], output_dir: Path):
             coeffs = np.polyfit(qubits, log_runtimes, 1)
             fit_runtimes = np.exp(coeffs[0] * qubits + coeffs[1])
             ax.plot(qubits, fit_runtimes, '--', color=color, alpha=0.5, linewidth=1.5,
-                   label=f'{fw} (exp fit)')
+                   label='_nolegend_')
     
     # Theoretical exponential reference: 2^n scaling
-    qubits_ref = np.array(range(4, 13))
-    # Normalize to first data point for visualization
     if results:
-        first_runtime = min([r['runtime_ms'] for r in results if r['qubits'] == 4])
-        theoretical = first_runtime * (2.0 ** (qubits_ref - 4))
+        qubits_ref = np.array(all_qubits)
+        first_qubit = qubits_ref[0]
+        first_runtime = min([r['runtime_ms'] for r in results if r['qubits'] == int(first_qubit)])
+        theoretical = first_runtime * (2.0 ** (qubits_ref - first_qubit))
         ax.plot(qubits_ref, theoretical, 'k--', linewidth=2, alpha=0.6,
                label='Theoretical 2^n scaling', linestyle=':')
     
@@ -252,7 +269,7 @@ def plot_scaling_analysis(results: List[Dict], output_dir: Path):
     ax.set_yscale('log')
     ax.grid(True, alpha=0.3, linestyle='--', which='both')
     ax.legend(loc='best', framealpha=0.95, fontsize=9)
-    ax.set_xticks(range(4, 13))
+    ax.set_xticks(all_qubits)
     
     plt.suptitle('XYZ Heisenberg Model: Scaling Analysis', fontweight='bold', fontsize=16, y=1.02)
     plt.tight_layout()
@@ -264,6 +281,11 @@ def plot_scaling_analysis(results: List[Dict], output_dir: Path):
 
 def plot_operations_comparison(results: List[Dict], output_dir: Path):
     """Plot number of operations vs qubits."""
+    if not results:
+        print("No results provided to plot_operations_comparison.")
+        return
+
+    all_qubits = sorted({r['qubits'] for r in results})
     # Group results by framework
     frameworks = {}
     for r in results:
@@ -290,7 +312,7 @@ def plot_operations_comparison(results: List[Dict], output_dir: Path):
     plt.title('XYZ Heisenberg Model: Circuit Operations vs Number of Qubits', fontweight='bold', fontsize=14)
     plt.grid(True, alpha=0.3, linestyle='--')
     plt.legend(loc='best', framealpha=0.95)
-    plt.xticks(range(4, 13))
+    plt.xticks(all_qubits)
     plt.tight_layout()
     output_path = output_dir / 'xyz_heisenberg_operations_comparison.png'
     plt.savefig(output_path)

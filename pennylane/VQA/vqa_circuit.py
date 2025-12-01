@@ -37,7 +37,7 @@ def draw_circuit():
 
     # Draw the circuit using mpl
     print(f"Generating circuit diagram with {reps} layers...")
-    fig, ax = qml.draw_mpl(circuit, style='pennylane')(params)
+    fig, ax = qml.draw_mpl(circuit)(params)
     
     output_file = "pennylane_vqa_circuit.png"
     plt.savefig(output_file)
