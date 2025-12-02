@@ -85,6 +85,9 @@ def plot_parameter_sweep(results: List[Dict], output_dir: Path):
     for fw in frameworks:
         frameworks[fw].sort(key=lambda x: x['parameters'])
     
+    # Get all unique parameter values for x-axis ticks
+    all_params = sorted(set(r['parameters'] for r in results))
+    
     # Plot 1: Energy Error vs Parameters
     plt.figure(figsize=(8, 6))
     for fw, fw_results in frameworks.items():
@@ -101,7 +104,7 @@ def plot_parameter_sweep(results: List[Dict], output_dir: Path):
     plt.yscale('log')
     plt.grid(True, alpha=0.3, linestyle='--', which='both')
     plt.legend(loc='best', framealpha=0.95)
-    plt.xticks([12, 16, 20, 24, 28])
+    plt.xticks(all_params)
     plt.tight_layout()
     output_path = output_dir / 'vqa_parameter_sweep_error.png'
     plt.savefig(output_path)
@@ -123,7 +126,7 @@ def plot_parameter_sweep(results: List[Dict], output_dir: Path):
     plt.title('Runtime vs Number of Parameters', fontweight='bold', fontsize=14)
     plt.grid(True, alpha=0.3, linestyle='--')
     plt.legend(loc='best', framealpha=0.95)
-    plt.xticks([12, 16, 20, 24, 28])
+    plt.xticks(all_params)
     plt.tight_layout()
     output_path = output_dir / 'vqa_parameter_sweep_runtime.png'
     plt.savefig(output_path)
@@ -146,7 +149,7 @@ def plot_parameter_sweep(results: List[Dict], output_dir: Path):
     plt.yscale('log')
     plt.grid(True, alpha=0.3, linestyle='--', which='both')
     plt.legend(loc='best', framealpha=0.95)
-    plt.xticks([12, 16, 20, 24, 28])
+    plt.xticks(all_params)
     plt.tight_layout()
     output_path = output_dir / 'vqa_parameter_sweep_runtime_log.png'
     plt.savefig(output_path)
@@ -168,7 +171,7 @@ def plot_parameter_sweep(results: List[Dict], output_dir: Path):
     plt.title('Convergence Iterations vs Number of Parameters', fontweight='bold', fontsize=14)
     plt.grid(True, alpha=0.3, linestyle='--')
     plt.legend(loc='best', framealpha=0.95)
-    plt.xticks([12, 16, 20, 24, 28])
+    plt.xticks(all_params)
     plt.tight_layout()
     output_path = output_dir / 'vqa_parameter_sweep_iterations.png'
     plt.savefig(output_path)
@@ -193,7 +196,7 @@ def plot_parameter_sweep(results: List[Dict], output_dir: Path):
     plt.title('VQE Energy vs Number of Parameters', fontweight='bold', fontsize=14)
     plt.grid(True, alpha=0.3, linestyle='--')
     plt.legend(loc='best', framealpha=0.95)
-    plt.xticks([12, 16, 20, 24, 28])
+    plt.xticks(all_params)
     plt.tight_layout()
     output_path = output_dir / 'vqa_parameter_sweep_energy.png'
     plt.savefig(output_path)

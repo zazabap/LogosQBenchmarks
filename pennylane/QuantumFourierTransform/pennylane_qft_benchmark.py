@@ -326,13 +326,26 @@ class QFTBenchmark:
 
 def main():
     """Main benchmarking function"""
+    import sys
+    
     benchmark = QFTBenchmark()
     
-    # Standardized benchmark: 1-12 qubits, 5 trials each
-    qubit_range = range(1, 13)
+    # Get qubit range from command-line arguments or use defaults
+    start_qubits = int(sys.argv[1]) if len(sys.argv) > 1 else 1
+    end_qubits = int(sys.argv[2]) if len(sys.argv) > 2 else 12
+    step = int(sys.argv[3]) if len(sys.argv) > 3 else 1
     trials = 5
     
-    print("🎯 Running standardized QFT benchmark: 1 to 12 qubits, {} trials each".format(trials))
+    # Validate arguments
+    if start_qubits <= 0 or end_qubits < start_qubits or step <= 0:
+        print("Error: Invalid qubit range. Ensure: start > 0, end >= start, step > 0")
+        sys.exit(1)
+    
+    # Create qubit range with step
+    qubit_range = range(start_qubits, end_qubits + 1, step)
+    
+    print("🎯 Running QFT benchmark: {} to {} qubits (step: {}), {} trials each".format(
+        start_qubits, end_qubits, step, trials))
     
     # Run benchmark
     benchmark.run_comprehensive_benchmark(qubit_range, trials)

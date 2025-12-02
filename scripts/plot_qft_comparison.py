@@ -338,7 +338,7 @@ def plot_memory_comparison(
     
     ax.set_xlabel('Number of Qubits', fontsize=14, fontweight='bold', labelpad=12)
     ax.set_ylabel('Memory Usage (MB, symlog scale)', fontsize=14, fontweight='bold', labelpad=12)
-    ax.legend(loc='upper right', frameon=True, fancybox=True, shadow=True,
+    ax.legend(loc='upper center', frameon=True, fancybox=True, shadow=True,
               fontsize=12, framealpha=0.95, edgecolor='gray', facecolor='white', 
               borderpad=0.8, handlelength=2.0, handletextpad=0.8)
     ax.grid(True, alpha=0.4, linestyle='--', linewidth=0.8, zorder=0, which='both')
@@ -443,7 +443,7 @@ def plot_speedup_comparison(
     
     ax.set_xlabel('Number of Qubits', fontsize=13, fontweight='bold', labelpad=10)
     ax.set_ylabel(f'Speedup Ratio (vs {baseline_name}, log scale)', fontsize=13, fontweight='bold', labelpad=10)
-    ax.legend(loc='upper right', frameon=True, fancybox=True, shadow=True,
+    ax.legend(loc='upper center', frameon=True, fancybox=True, shadow=True,
               fontsize=11, framealpha=0.95, edgecolor='gray', facecolor='white')
     ax.grid(True, alpha=0.4, linestyle='--', linewidth=0.8, which='both', zorder=1)
     ax.set_facecolor('#FAFAFA')
@@ -536,7 +536,7 @@ def plot_synthesis_result(
     
     ax2.set_xlabel('Number of Qubits', fontsize=13, fontweight='bold', labelpad=10)
     ax2.set_ylabel('Memory Usage (MB, symlog scale)', fontsize=13, fontweight='bold', labelpad=10)
-    ax2.legend(loc='upper right', frameon=True, fancybox=True, shadow=True,
+    ax2.legend(loc='upper center', frameon=True, fancybox=True, shadow=True,
               fontsize=10, framealpha=0.95, edgecolor='gray', facecolor='white', ncol=1)
     ax2.grid(True, alpha=0.4, linestyle='--', linewidth=0.8, zorder=0, which='both')
     ax2.set_yscale('symlog', linthresh=0.1, linscale=0.5)
@@ -596,7 +596,7 @@ def plot_synthesis_result(
     
     ax3.set_xlabel('Number of Qubits', fontsize=13, fontweight='bold', labelpad=10)
     ax3.set_ylabel(f'Speedup Ratio (vs {baseline_name}, log scale)', fontsize=13, fontweight='bold', labelpad=10)
-    ax3.legend(loc='upper right', frameon=True, fancybox=True, shadow=True,
+    ax3.legend(loc='upper center', frameon=True, fancybox=True, shadow=True,
               fontsize=10, framealpha=0.95, edgecolor='gray', facecolor='white', ncol=1)
     ax3.grid(True, alpha=0.4, linestyle='--', linewidth=0.8, which='both', zorder=1)
     ax3.set_facecolor('#FAFAFA')

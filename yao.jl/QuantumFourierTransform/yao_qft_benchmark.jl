@@ -390,15 +390,63 @@ function print_scaling_analysis(results)
 end
 
 function main()
-    # Standardized benchmark: 1-12 qubits, 5 trials each
-    min_qubits = 1
-    max_qubits = 12
+    # Get qubit range from command-line arguments or use defaults
+    min_qubits = length(ARGS) >= 1 ? parse(Int, ARGS[1]) : 1
+    max_qubits = length(ARGS) >= 2 ? parse(Int, ARGS[2]) : 12
+    step = length(ARGS) >= 3 ? parse(Int, ARGS[3]) : 1
     trials = 5
     
-    println("🎯 Running standardized QFT benchmark: $min_qubits to $max_qubits qubits, $trials trials each")
+    # Validate arguments
+    if min_qubits <= 0 || max_qubits < min_qubits || step <= 0
+        println(stderr, "Error: Invalid qubit range. Ensure: start > 0, end >= start, step > 0")
+        exit(1)
+    end
     
-    # Run benchmark
-    run_benchmark(min_qubits, max_qubits, trials)
+    println("🎯 Running QFT benchmark: $min_qubits to $max_qubits qubits (step: $step), $trials trials each")
+    
+    # Run benchmark with step support
+    results = QFTBenchmarkResult[]
+    
+    for n_qubits in min_qubits:step:max_qubits
+        try
+            result = benchmark_qft_circuit(n_qubits, trials)
+            push!(results, result)
+        catch e
+            println("❌ Error benchmarking $n_qubits qubits - skipping this qubit count")
+            println("  Error: $e")
+            continue
+        end
+    end
+    
+    # Save JSON results
+    output_file = "/app/yao.jl/QuantumFourierTransform/qft_benchmark_results.json"
+    
+    if !isempty(results)
+        # Convert to JSON-compatible format
+        json_results = []
+        for result in results
+            push!(json_results, Dict(
+                "n_qubits" => result.n_qubits,
+                "execution_time_ms" => result.execution_time_ms,
+                "std_deviation_ms" => result.std_deviation_ms,
+                "memory_mb" => result.memory_mb,
+                "gate_count" => result.gate_count,
+                "state_size" => result.state_size,
+                "fidelity" => result.fidelity
+            ))
+        end
+        
+        open(output_file, "w") do f
+            JSON.print(f, json_results, 2)
+        end
+        
+        println("\n✅ Results saved to: $output_file")
+        
+        # Print scaling analysis
+        print_scaling_analysis(results)
+    else
+        println("\n⚠️  No results to save")
+    end
     
     println("\n🎉 Benchmark completed!")
 end

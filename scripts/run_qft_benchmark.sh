@@ -1,17 +1,44 @@
 #!/bin/bash
 # Script to run QFT benchmarks for all libraries and generate comparison plots
+# Usage: ./run_qft_benchmark.sh [start_qubits] [end_qubits] [step]
+#   start_qubits: Starting qubit count (default: 1)
+#   end_qubits: Ending qubit count (default: 12)
+#   step: Step size between qubit counts (default: 1)
+# Example: ./run_qft_benchmark.sh 4 12 2  # Runs for 4, 6, 8, 10, 12 qubits
 
 # Don't exit on error - we want to continue even if one benchmark fails
 set +e
+
+# Ensure PATH includes common tool locations
+export PATH="${HOME}/.cargo/bin:${PATH}"
+export PATH="/opt/julia/bin:${PATH}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 RESULTS_DIR="/app/test_results/qft"
 mkdir -p "$RESULTS_DIR"
 
+# Parse command-line arguments for qubit range
+START_QUBITS=${1:-1}
+END_QUBITS=${2:-12}
+STEP=${3:-1}
+
+# Validate arguments
+if ! [[ "$START_QUBITS" =~ ^[0-9]+$ ]] || ! [[ "$END_QUBITS" =~ ^[0-9]+$ ]] || ! [[ "$STEP" =~ ^[0-9]+$ ]]; then
+    echo "Error: All arguments must be positive integers"
+    echo "Usage: $0 [start_qubits] [end_qubits] [step]"
+    exit 1
+fi
+
+if [ "$START_QUBITS" -le 0 ] || [ "$END_QUBITS" -lt "$START_QUBITS" ] || [ "$STEP" -le 0 ]; then
+    echo "Error: Invalid qubit range. Ensure: start > 0, end >= start, step > 0"
+    exit 1
+fi
+
 echo "================================================"
 echo "QFT Benchmark Suite - All Libraries"
 echo "================================================"
+echo "Qubit range: $START_QUBITS to $END_QUBITS (step: $STEP)"
 echo ""
 
 # Colors for output
@@ -42,22 +69,48 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo "1/4 Running LogosQ (Rust) QFT Benchmark..."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
+# Check for cargo in multiple ways
+CARGO_CMD=""
 if command -v cargo &> /dev/null; then
-    cd "${REPO_ROOT}/logosq/QuantumFourierTransform"
-    
-    # Check if we need to add it as an example
-    if ! grep -q "qft_benchmark_simple" /app/logosq/Cargo.toml; then
-        echo "Adding qft_benchmark_simple as example to Cargo.toml..."
-        cat >> /app/logosq/Cargo.toml << 'EOF'
+    CARGO_CMD="cargo"
+elif [ -f "${HOME}/.cargo/bin/cargo" ]; then
+    CARGO_CMD="${HOME}/.cargo/bin/cargo"
+elif [ -f "/root/.cargo/bin/cargo" ]; then
+    CARGO_CMD="/root/.cargo/bin/cargo"
+fi
 
-[[example]]
-name = "qft_benchmark_simple"
-path = "QuantumFourierTransform/qft_benchmark_simple.rs"
-EOF
+if [ -n "$CARGO_CMD" ]; then
+    cd "${REPO_ROOT}/logosq" || exit 1
+    
+    # Define paths once
+    BINARY_PATH="${REPO_ROOT}/logosq/target/release/examples/qft_benchmark_simple"
+    SOURCE_PATH="${REPO_ROOT}/logosq/QuantumFourierTransform/qft_benchmark_simple.rs"
+    CARGO_TOML="${REPO_ROOT}/logosq/Cargo.toml"
+    
+    # Check if binary exists and is up-to-date (single optimized check)
+    if [ -f "$BINARY_PATH" ] && \
+       [ -f "$SOURCE_PATH" ] && \
+       [ "$BINARY_PATH" -nt "$SOURCE_PATH" ] && \
+       [ "$BINARY_PATH" -nt "$CARGO_TOML" ]; then
+        # Binary is up-to-date, run directly without compilation
+        echo "Binary already compiled, skipping compilation..."
+        if QFT_START_QUBITS="$START_QUBITS" QFT_END_QUBITS="$END_QUBITS" QFT_STEP="$STEP" \
+           "$BINARY_PATH" > /tmp/logosq_qft_benchmark.log 2>&1; then
+            BENCHMARK_SUCCESS=true
+        else
+            BENCHMARK_SUCCESS=false
+        fi
+    else
+        # Need to compile (cargo will use incremental compilation if possible)
+        if QFT_START_QUBITS="$START_QUBITS" QFT_END_QUBITS="$END_QUBITS" QFT_STEP="$STEP" \
+           "$CARGO_CMD" run --example qft_benchmark_simple --release > /tmp/logosq_qft_benchmark.log 2>&1; then
+            BENCHMARK_SUCCESS=true
+        else
+            BENCHMARK_SUCCESS=false
+        fi
     fi
     
-    # Run the benchmark (continue even if it fails)
-    if cargo run --example qft_benchmark_simple --release > /tmp/logosq_qft_benchmark.log 2>&1; then
+    if [ "$BENCHMARK_SUCCESS" = true ]; then
         print_status "SUCCESS" "LogosQ benchmark completed"
         SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
         LOGOSQ_RESULT_SRC="${REPO_ROOT}/logosq/QuantumFourierTransform/qft_benchmark_results.json"
@@ -87,7 +140,7 @@ if command -v python3 &> /dev/null; then
         echo "Warning: pennylane_qft.py not found, benchmark may fail"
     fi
     
-    if python3 pennylane_qft_benchmark.py > /tmp/pennylane_qft_benchmark.log 2>&1; then
+    if python3 pennylane_qft_benchmark.py "$START_QUBITS" "$END_QUBITS" "$STEP" > /tmp/pennylane_qft_benchmark.log 2>&1; then
         print_status "SUCCESS" "PennyLane benchmark completed"
         SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
         PENNYLANE_RESULT_SRC="${REPO_ROOT}/pennylane/QuantumFourierTransform/qft_benchmark_results.json"
@@ -112,7 +165,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 if command -v python3 &> /dev/null; then
     cd "${REPO_ROOT}/qiskit/QuantumFourierTransform"
     
-    if python3 qiskit_benchmark.py > /tmp/qiskit_qft_benchmark.log 2>&1; then
+    if python3 qiskit_benchmark.py "$START_QUBITS" "$END_QUBITS" "$STEP" > /tmp/qiskit_qft_benchmark.log 2>&1; then
         print_status "SUCCESS" "Qiskit benchmark completed"
         SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
         QISKIT_RESULT_SRC="${REPO_ROOT}/qiskit/QuantumFourierTransform/qiskit_qft_benchmark_results.json"
@@ -249,9 +302,9 @@ if command -v julia &> /dev/null; then
     
     cd "${REPO_ROOT}/yao.jl/QuantumFourierTransform"
     
-    # Run with project environment activated
+    # Run with project environment activated and qubit range parameters
     # Try without --compiled-modules=no first (faster), fall back if needed
-    if julia --project=/app/yao.jl yao_qft_benchmark.jl > /tmp/yao_qft_benchmark.log 2>&1; then
+    if julia --project=/app/yao.jl yao_qft_benchmark.jl "$START_QUBITS" "$END_QUBITS" "$STEP" > /tmp/yao_qft_benchmark.log 2>&1; then
         print_status "SUCCESS" "Yao.jl benchmark completed"
         SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
         YAO_RESULT_SRC="${REPO_ROOT}/yao.jl/QuantumFourierTransform/qft_benchmark_results.json"
@@ -261,7 +314,7 @@ if command -v julia &> /dev/null; then
     else
         # If it failed, try with --compiled-modules=no to work around circular dependency
         echo "First attempt failed, trying with --compiled-modules=no to work around circular dependency..."
-        if julia --project=/app/yao.jl --compiled-modules=no yao_qft_benchmark.jl > /tmp/yao_qft_benchmark.log 2>&1; then
+        if julia --project=/app/yao.jl --compiled-modules=no yao_qft_benchmark.jl "$START_QUBITS" "$END_QUBITS" "$STEP" > /tmp/yao_qft_benchmark.log 2>&1; then
             print_status "SUCCESS" "Yao.jl benchmark completed (with --compiled-modules=no)"
             SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
             YAO_RESULT_SRC="${REPO_ROOT}/yao.jl/QuantumFourierTransform/qft_benchmark_results.json"
@@ -287,11 +340,24 @@ echo "5/5 Running Q# (.NET) QFT Benchmark..."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 if command -v dotnet &> /dev/null; then
+    # Fix path issues: some .NET components may be installed in /usr/lib/dotnet instead of /usr/share/dotnet
+    # Create symlinks if needed to ensure dotnet can find all components
+    if [ -d /usr/lib/dotnet/host ] && [ ! -d /usr/share/dotnet/host ]; then
+        echo "Creating symlink for .NET host components..."
+        ln -sf /usr/lib/dotnet/host /usr/share/dotnet/host 2>/dev/null || true
+    fi
+    if [ -d /usr/lib/dotnet/shared ] && [ ! -d /usr/share/dotnet/shared ]; then
+        echo "Creating symlink for .NET shared components..."
+        ln -sf /usr/lib/dotnet/shared /usr/share/dotnet/shared 2>/dev/null || true
+    fi
+    
     # Verify .NET installation is complete and functional
     if ! dotnet --version > /dev/null 2>&1; then
         print_status "SKIP" ".NET SDK found but not working properly (check installation)"
     elif ! dotnet --info > /dev/null 2>&1; then
         print_status "SKIP" ".NET SDK found but runtime info unavailable (check installation)"
+    elif ! dotnet --list-runtimes > /dev/null 2>&1; then
+        print_status "SKIP" ".NET SDK found but runtimes unavailable (check installation)"
     else
         QSHARP_PROJECT="${REPO_ROOT}/qsharp/QuantumFourierTransform/QFT.csproj"
         
@@ -311,9 +377,9 @@ if command -v dotnet &> /dev/null; then
                     print_status "FAIL" "Q# build failed (check /tmp/qsharp_build.log)"
                     cat /tmp/qsharp_build.log | tail -20
                 else
-                    # Run the benchmark
+                    # Run the benchmark with qubit range parameters
                     echo "Running Q# benchmark..."
-                    if QFT_OUTPUT_DIR="${RESULTS_DIR}" dotnet run --project "$QSHARP_PROJECT" --configuration Release -- 1 12 > /tmp/qsharp_qft_benchmark.log 2>&1; then
+                    if QFT_OUTPUT_DIR="${RESULTS_DIR}" dotnet run --project "$QSHARP_PROJECT" --configuration Release -- "$START_QUBITS" "$END_QUBITS" "$STEP" > /tmp/qsharp_qft_benchmark.log 2>&1; then
                         print_status "SUCCESS" "Q# benchmark completed"
                         SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
                         # Verify result file was created
@@ -391,6 +457,23 @@ if command -v python3 &> /dev/null; then
 else
     echo -e "${RED}✗${NC} Python3 not available, cannot generate plots"
     exit 1
+fi
+
+# 6. Verify QFT correctness across libraries
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Verifying QFT Correctness Across Libraries..."
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+if command -v python3 &> /dev/null; then
+    if python3 "${SCRIPT_DIR}/verify_qft_correctness.py" > /tmp/qft_verification.log 2>&1; then
+        print_status "SUCCESS" "QFT verification completed"
+        echo "  Verification results saved to: ${RESULTS_DIR}/qft_verification_results.json"
+    else
+        print_status "FAIL" "QFT verification failed (check /tmp/qft_verification.log)"
+        cat /tmp/qft_verification.log | tail -20
+    fi
+else
+    print_status "SKIP" "Python3 not available, skipping QFT verification"
 fi
 
 echo ""

@@ -83,12 +83,16 @@ RUN (wget https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-
      apt-get update && \
      DEBIAN_FRONTEND=noninteractive apt-get install -y dotnet-sdk-6.0 && \
      rm -rf /var/lib/apt/lists/* && \
+     # Fix path issues: some .NET components may be installed in /usr/lib/dotnet instead of /usr/share/dotnet
+     # Create symlinks if needed to ensure dotnet can find all components
+     (test -d /usr/lib/dotnet/host && ! test -d /usr/share/dotnet/host && ln -sf /usr/lib/dotnet/host /usr/share/dotnet/host || true) && \
+     (test -d /usr/lib/dotnet/shared && ! test -d /usr/share/dotnet/shared && ln -sf /usr/lib/dotnet/shared /usr/share/dotnet/shared || true) && \
      # Verify installation - check version
      dotnet --version > /dev/null 2>&1 && \
      # Verify runtime info is available
      dotnet --info > /dev/null 2>&1 && \
-     # Verify hostfxr exists (critical for running .NET apps)
-     (test -d /usr/share/dotnet/host/fxr || test -d /usr/lib/dotnet/host/fxr || find /usr -name "hostfxr.so" 2>/dev/null | head -1 | grep -q .) && \
+     # Verify runtimes are available
+     dotnet --list-runtimes > /dev/null 2>&1 && \
      echo ".NET SDK installed successfully with all runtime components") || echo "Warning: .NET SDK installation failed, but continuing (Q# benchmarks will be skipped)"
 
 # Expose port for web visualization

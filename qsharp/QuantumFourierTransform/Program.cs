@@ -19,22 +19,31 @@ namespace QuantumFourierTransform
                 string outputDir = Environment.GetEnvironmentVariable("QFT_OUTPUT_DIR") ?? ".";
                 string outputFile = Path.Combine(outputDir, "qsharp_qft_benchmark_results.json");
                 
-                // Default range if not specified: 4 to 12
+                // Default range if not specified: 4 to 12, step 1
                 int minQubits = 4;
                 int maxQubits = 12;
+                int step = 1;
                 
                 if (args.Length >= 1) int.TryParse(args[0], out minQubits);
                 if (args.Length >= 2) int.TryParse(args[1], out maxQubits);
+                if (args.Length >= 3) int.TryParse(args[2], out step);
+
+                // Validate arguments
+                if (minQubits <= 0 || maxQubits < minQubits || step <= 0)
+                {
+                    Console.Error.WriteLine("Error: Invalid qubit range. Ensure: start > 0, end >= start, step > 0");
+                    Environment.Exit(1);
+                }
 
                 var results = new List<BenchmarkResult>();
                 var sim = new QuantumSimulator();
 
-                Console.WriteLine($"Running QFT benchmark from {minQubits} to {maxQubits} qubits...");
+                Console.WriteLine($"Running QFT benchmark from {minQubits} to {maxQubits} qubits (step: {step})...");
 
                 // Warmup
                 await RunQFT.Run(sim, 4);
 
-                for (int n = minQubits; n <= maxQubits; n++)
+                for (int n = minQubits; n <= maxQubits; n += step)
                 {
                     Console.Write($"  Testing {n} qubits... ");
                     

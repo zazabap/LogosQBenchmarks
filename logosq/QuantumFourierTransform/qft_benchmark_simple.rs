@@ -18,9 +18,11 @@ struct BenchmarkResult {
     gate_count: usize,
     state_size: usize,
     fidelity: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    qft_probs: Option<Vec<f64>>, // QFT output probabilities for verification
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 enum QftBackend {
     Dense,
     Mps,
@@ -46,6 +48,7 @@ struct QFTBenchmark {
     backend: QftBackend,
     mps_config: MpsConfig,
     results: Vec<BenchmarkResult>,
+    auto_switch_threshold: usize, // Auto-switch to MPS above this qubit count
 }
 
 impl QFTBenchmark {
@@ -54,6 +57,18 @@ impl QFTBenchmark {
             backend,
             mps_config,
             results: Vec::new(),
+            auto_switch_threshold: 10, // Auto-switch to MPS for qubits > 10
+        }
+    }
+    
+    /// Get the effective backend for a given qubit count
+    /// Automatically switches to MPS for larger qubit counts if using dense backend
+    fn get_backend_for_qubits(&self, n_qubits: usize) -> QftBackend {
+        match self.backend {
+            QftBackend::Dense if n_qubits > self.auto_switch_threshold => {
+                QftBackend::Mps
+            }
+            _ => self.backend,
         }
     }
 
@@ -99,25 +114,34 @@ impl QFTBenchmark {
     }
 
     fn benchmark_qft_circuit(&self, n_qubits: usize, num_trials: usize) -> BenchmarkResult {
+        // Determine effective backend (may auto-switch to MPS for large qubit counts)
+        let effective_backend = self.get_backend_for_qubits(n_qubits);
+        let backend_label = if effective_backend != self.backend {
+            format!("{} (auto-switched from {})", effective_backend.label(), self.backend.label())
+        } else {
+            effective_backend.label().to_string()
+        };
+        
         println!(
             "\n🔬 Benchmarking {}-qubit QFT circuit on {} backend...",
             n_qubits,
-            self.backend.label()
+            backend_label
         );
 
         // Theoretical gate count for QFT
         let gate_count = n_qubits + (n_qubits * (n_qubits - 1)) / 2 + n_qubits / 2;
 
-        // Memory before
+        // Memory before - force a clean baseline by measuring after potential allocations
         let mem_before = Self::measure_memory_usage();
 
         // Prepare for measurements
         let mut execution_times = Vec::with_capacity(num_trials);
         let mut fidelity = None;
+        let mut peak_memory = mem_before;
 
         // Initial warm-up run
         println!("  ⚡ Warm-up run...");
-        match self.backend {
+        match effective_backend {
             QftBackend::Dense => {
                 let mut state = State::zero_state(n_qubits);
                 let mut circuit = Circuit::new(n_qubits);
@@ -137,7 +161,7 @@ impl QFTBenchmark {
         // Run benchmark trials
         println!("  🏃 Running {} trials...", num_trials);
         for i in 0..num_trials {
-            let execution_time_ms = match self.backend {
+            let execution_time_ms = match effective_backend {
                 QftBackend::Dense => {
                     let mut state = State::zero_state(n_qubits);
                     let mut circuit = Circuit::new(n_qubits);
@@ -161,6 +185,13 @@ impl QFTBenchmark {
             };
 
             execution_times.push(execution_time_ms);
+            
+            // Track peak memory during trials
+            let current_mem = Self::measure_memory_usage();
+            if current_mem > peak_memory {
+                peak_memory = current_mem;
+            }
+            
             print!(
                 "  Trial {:2}/{}: {:7.3} ms\r",
                 i + 1,
@@ -173,7 +204,7 @@ impl QFTBenchmark {
         // Test round-trip fidelity if appropriate
         if n_qubits <= 15 {
             println!("  🔄 Testing round-trip fidelity...");
-            match self.backend {
+            match effective_backend {
                 QftBackend::Dense => {
                     let mut state = State::zero_state(n_qubits);
                     let mut circuit = Circuit::new(n_qubits);
@@ -208,9 +239,17 @@ impl QFTBenchmark {
             / num_trials as f64;
         let std_dev = variance.sqrt();
 
-        // Memory after
+        // Memory after - check both final and peak memory
         let mem_after = Self::measure_memory_usage();
-        let mem_delta = mem_after - mem_before;
+        
+        // Use peak memory during execution, or final memory if higher
+        let final_peak = if mem_after > peak_memory { mem_after } else { peak_memory };
+        let mut mem_delta = final_peak - mem_before;
+        
+        // Clamp negative values to 0 (memory can be freed by allocator/GC between measurements)
+        if mem_delta < 0.0 {
+            mem_delta = 0.0;
+        }
 
         // Print summary for this qubit count
         println!("  ✅ Results:");
@@ -226,6 +265,36 @@ impl QFTBenchmark {
             println!("    🎯 Fidelity:      {:.6}", f);
         }
 
+        // Save QFT probabilities for verification (only for small qubit counts to avoid large arrays)
+        let qft_probs = if n_qubits <= 8 {
+            // Run QFT once more to get probabilities
+            match effective_backend {
+                QftBackend::Dense => {
+                    let mut state = State::zero_state(n_qubits);
+                    let mut circuit = Circuit::new(n_qubits);
+                    circuit.x(0);
+                    circuit
+                        .execute(&mut state)
+                        .expect("Failed to execute circuit");
+                    qft::apply(&mut state);
+                    Some((0..(1 << n_qubits))
+                        .map(|i| state.probability(i))
+                        .collect())
+                }
+                QftBackend::Mps => {
+                    let mut state = MpsState::zero_state(n_qubits, self.mps_config);
+                    state.apply_pauli_x(0);
+                    apply_qft_mps(&mut state);
+                    let dense_state = state.to_dense_state();
+                    Some((0..(1 << n_qubits))
+                        .map(|i| dense_state.probability(i))
+                        .collect())
+                }
+            }
+        } else {
+            None
+        };
+
         BenchmarkResult {
             n_qubits,
             execution_time_ms: mean_time,
@@ -234,6 +303,7 @@ impl QFTBenchmark {
             gate_count,
             state_size: 1 << n_qubits,
             fidelity,
+            qft_probs,
         }
     }
 
@@ -440,19 +510,74 @@ fn main() {
 
     let mut benchmark = QFTBenchmark::new(backend, mps_config);
 
-    // Standardized benchmark: 1-12 qubits, 5 trials each
-    let min_qubits = 1;
-    let max_qubits = 12;
+    // Get qubit range from environment variables or use defaults
+    let min_qubits = std::env::var("QFT_START_QUBITS")
+        .ok()
+        .and_then(|s| s.parse::<usize>().ok())
+        .unwrap_or(1);
+    let max_qubits = std::env::var("QFT_END_QUBITS")
+        .ok()
+        .and_then(|s| s.parse::<usize>().ok())
+        .unwrap_or(12);
+    let step = std::env::var("QFT_STEP")
+        .ok()
+        .and_then(|s| s.parse::<usize>().ok())
+        .unwrap_or(1);
     let trials = 5;
 
     println!(
-        "🎯 Running standardized QFT benchmark: {} to {} qubits, {} trials each",
-        min_qubits, max_qubits, trials
+        "🎯 Running QFT benchmark: {} to {} qubits (step: {}), {} trials each",
+        min_qubits, max_qubits, step, trials
     );
     println!("🧮 Backend: {}", backend.label());
 
-    // Run benchmark
-    benchmark.run_benchmark(min_qubits, max_qubits, trials);
+    // Run benchmark with step support
+    println!("\n🚀 LOGOSQ QFT BENCHMARK");
+    println!("{}", "=".repeat(60));
+    println!("💻 System Info: {}", QFTBenchmark::get_system_info());
+    println!("🎯 Testing qubits: {} to {} (step: {})", min_qubits, max_qubits, step);
+    println!("🔄 Trials per test: {}", trials);
+    println!("{}", "=".repeat(60));
+
+    let mut n = min_qubits;
+    while n <= max_qubits {
+        match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| benchmark.benchmark_qft_circuit(n, trials))) {
+            Ok(result) => {
+                benchmark.results.push(result);
+            }
+            Err(_) => {
+                eprintln!(
+                    "❌ Error benchmarking {} qubits - benchmark failed",
+                    n
+                );
+                eprintln!(
+                    "  (This may be due to memory limitations or other system constraints)"
+                );
+                // Continue to next qubit count instead of breaking
+            }
+        }
+        n += step;
+    }
+    
+    // Save JSON results
+    if !benchmark.results.is_empty() {
+        let output_file = "/app/logosq/QuantumFourierTransform/qft_benchmark_results.json";
+        match File::create(output_file) {
+            Ok(mut file) => {
+                let json = serde_json::to_string_pretty(&benchmark.results).unwrap();
+                if let Err(e) = file.write_all(json.as_bytes()) {
+                    println!("❌ Error writing benchmark results: {}", e);
+                } else {
+                    println!("\n💾 Results saved to: {}", output_file);
+                }
+            }
+            Err(e) => {
+                println!("\n❌ Error creating benchmark file: {}", e);
+            }
+        }
+    }
+    
+    benchmark.print_scaling_analysis();
 
     println!("\n🎉 Benchmark completed!");
 }

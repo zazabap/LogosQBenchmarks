@@ -174,10 +174,20 @@ def main():
     suite_start = time.time()
     results = []
     
-    print("Starting Qiskit QFT benchmarks...", file=sys.stderr)
+    # Get qubit range from command-line arguments or use defaults
+    start_qubits = int(sys.argv[1]) if len(sys.argv) > 1 else 1
+    end_qubits = int(sys.argv[2]) if len(sys.argv) > 2 else 12
+    step = int(sys.argv[3]) if len(sys.argv) > 3 else 1
     
-    # Standardized benchmark: 1-12 qubits QFT only
-    qubit_sizes = list(range(1, 13))
+    # Validate arguments
+    if start_qubits <= 0 or end_qubits < start_qubits or step <= 0:
+        print("Error: Invalid qubit range. Ensure: start > 0, end >= start, step > 0", file=sys.stderr)
+        sys.exit(1)
+    
+    # Create qubit range with step
+    qubit_sizes = list(range(start_qubits, end_qubits + 1, step))
+    
+    print(f"Starting Qiskit QFT benchmarks: {start_qubits} to {end_qubits} qubits (step: {step})...", file=sys.stderr)
     
     for num_qubits in qubit_sizes:
         print(f"Benchmarking {num_qubits} qubits QFT...", file=sys.stderr)
