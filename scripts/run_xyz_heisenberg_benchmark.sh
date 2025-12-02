@@ -10,10 +10,46 @@ RESULTS_BASE_DIR="/app/test_results/xyz_heisenberg"
 OUTPUT_DIR="${RESULTS_BASE_DIR}/individual"
 mkdir -p "$RESULTS_BASE_DIR" "$OUTPUT_DIR"
 
-# Qubit counts: 4, 5, 6, 7, 8, 9, 10, 11, 12
-QUBIT_COUNTS=(4 5 6 7 8 9 10 11 12)
+# Prompt user for qubit range and step
+echo "Configure XYZ Heisenberg qubit sweep:"
+read -p "  Enter starting qubit count [4]: " START_QUBITS
+read -p "  Enter ending qubit count   [24]: " END_QUBITS
+read -p "  Enter qubit step interval  [2]: " STEP_QUBITS
 
-FRAMEWORKS=("logosq" "pennylane" "qiskit" "yao")
+# Apply defaults if user presses Enter
+START_QUBITS=${START_QUBITS:-4}
+END_QUBITS=${END_QUBITS:-24}
+STEP_QUBITS=${STEP_QUBITS:-2}
+
+# Basic validation
+if ! [[ "$START_QUBITS" =~ ^[0-9]+$ && "$END_QUBITS" =~ ^[0-9]+$ && "$STEP_QUBITS" =~ ^[0-9]+$ ]]; then
+    echo "Error: qubit values must be positive integers."
+    exit 1
+fi
+
+if [ "$START_QUBITS" -le 0 ] || [ "$END_QUBITS" -lt "$START_QUBITS" ] || [ "$STEP_QUBITS" -le 0 ]; then
+    echo "Error: ensure END >= START, START > 0, and STEP > 0."
+    exit 1
+fi
+
+# Build qubit count array from user input
+QUBIT_COUNTS=()
+for ((q = START_QUBITS; q <= END_QUBITS; q += STEP_QUBITS)); do
+    QUBIT_COUNTS+=("$q")
+done
+
+if [ "${#QUBIT_COUNTS[@]}" -eq 0 ]; then
+    echo "Error: no valid qubit counts generated."
+    exit 1
+fi
+
+export XYZ_START_QUBITS="$START_QUBITS"
+export XYZ_END_QUBITS="$END_QUBITS"
+export XYZ_STEP_QUBITS="$STEP_QUBITS"
+
+echo "Qubit sweep will run for: ${QUBIT_COUNTS[*]}"
+
+FRAMEWORKS=("logosq" "pennylane" "qiskit" "yao" "qsharp")
 
 echo "=========================================="
 echo "XYZ Heisenberg Model Benchmark"
@@ -74,6 +110,17 @@ for framework in "${FRAMEWORKS[@]}"; do
                     echo "    ✗ Failed"
                 fi
                 ;;
+            qsharp)
+                if XYZ_QUBITS="$qubits" XYZ_OUTPUT_FILE="$output_file" dotnet run --project "${REPO_ROOT}/qsharp/XYZHeisenberg/XYZHeisenberg.csproj" --configuration Release > /dev/null 2>&1; then
+                    if [ -f "$output_file" ]; then
+                        echo "    ✓ Completed"
+                    else
+                        echo "    ✗ JSON file not found"
+                    fi
+                else
+                    echo "    ✗ Failed"
+                fi
+                ;;
         esac
     done
     echo ""
@@ -90,8 +137,16 @@ import os
 script_dir = "${SCRIPT_DIR}"
 output_dir = "${OUTPUT_DIR}"
 
-frameworks = ["logosq", "pennylane", "qiskit", "yao"]
-qubit_counts = [4, 5, 6, 7, 8, 9, 10, 11, 12]
+frameworks = ["logosq", "pennylane", "qiskit", "yao", "qsharp"]
+
+start_qubits = int(os.environ.get("XYZ_START_QUBITS", "4"))
+end_qubits = int(os.environ.get("XYZ_END_QUBITS", "24"))
+step_qubits = int(os.environ.get("XYZ_STEP_QUBITS", "2"))
+if start_qubits <= 0 or end_qubits < start_qubits or step_qubits <= 0:
+    print("Invalid qubit sweep configuration from environment; falling back to default [4, 6, ..., 24].", file=sys.stderr)
+    qubit_counts = list(range(4, 25, 2))
+else:
+    qubit_counts = list(range(start_qubits, end_qubits + 1, step_qubits))
 
 results = []
 for framework in frameworks:

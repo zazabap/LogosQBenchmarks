@@ -49,6 +49,13 @@ yarn-debug.log*
 yarn-error.log*
 package-lock.json
 
+# Q# / .NET
+bin/
+obj/
+.ionide/
+state_dump.txt
+vqa_state_dump.txt
+
 # Results and logs
 results/
 logs/

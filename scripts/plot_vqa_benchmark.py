@@ -50,6 +50,7 @@ FRAMEWORK_COLORS = {
     'Qiskit (Python)': '#457B9D',
     'PennyLane (Python)': '#F77F00',
     'Yao.jl (Julia)': '#2A9D8F',
+    'Q# (.NET)': '#884dff',
 }
 
 FRAMEWORK_MARKERS = {
@@ -57,6 +58,7 @@ FRAMEWORK_MARKERS = {
     'Qiskit (Python)': 's',
     'PennyLane (Python)': '^',
     'Yao.jl (Julia)': 'D',
+    'Q# (.NET)': 'X',
 }
 
 RESULTS_DIR = Path("/app/test_results/vqa_parameter_sweep")
@@ -126,6 +128,29 @@ def plot_parameter_sweep(results: List[Dict], output_dir: Path):
     output_path = output_dir / 'vqa_parameter_sweep_runtime.png'
     plt.savefig(output_path)
     print(f"Saved runtime plot to: {output_path}")
+    plt.close()
+
+    # Plot 2b: Runtime vs Parameters (Log Scale)
+    plt.figure(figsize=(8, 6))
+    for fw, fw_results in frameworks.items():
+        params = [r['parameters'] for r in fw_results]
+        runtimes = [r['runtime_ms'] for r in fw_results]
+        color = FRAMEWORK_COLORS.get(fw, '#666666')
+        marker = FRAMEWORK_MARKERS.get(fw, 'o')
+        plt.plot(params, runtimes, marker=marker, linewidth=2.5, markersize=10,
+                label=fw, color=color, alpha=0.8)
+    
+    plt.xlabel('Number of Parameters', fontweight='bold')
+    plt.ylabel('Runtime (ms)', fontweight='bold')
+    plt.title('Runtime vs Number of Parameters (Log Scale)', fontweight='bold', fontsize=14)
+    plt.yscale('log')
+    plt.grid(True, alpha=0.3, linestyle='--', which='both')
+    plt.legend(loc='best', framealpha=0.95)
+    plt.xticks([12, 16, 20, 24, 28])
+    plt.tight_layout()
+    output_path = output_dir / 'vqa_parameter_sweep_runtime_log.png'
+    plt.savefig(output_path)
+    print(f"Saved log-scale runtime plot to: {output_path}")
     plt.close()
     
     # Plot 3: Iterations vs Parameters

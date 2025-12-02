@@ -176,8 +176,8 @@ def main():
     
     print("Starting Qiskit QFT benchmarks...", file=sys.stderr)
     
-    # Standardized benchmark: 1-10 qubits QFT only
-    qubit_sizes = list(range(1, 11))
+    # Standardized benchmark: 1-12 qubits QFT only
+    qubit_sizes = list(range(1, 13))
     
     for num_qubits in qubit_sizes:
         print(f"Benchmarking {num_qubits} qubits QFT...", file=sys.stderr)

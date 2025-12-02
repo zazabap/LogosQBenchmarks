@@ -440,9 +440,9 @@ fn main() {
 
     let mut benchmark = QFTBenchmark::new(backend, mps_config);
 
-    // Standardized benchmark: 1-10 qubits, 5 trials each
+    // Standardized benchmark: 1-12 qubits, 5 trials each
     let min_qubits = 1;
-    let max_qubits = 10;
+    let max_qubits = 12;
     let trials = 5;
 
     println!(

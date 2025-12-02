@@ -14,7 +14,7 @@ mkdir -p "$RESULTS_BASE_DIR" "$OUTPUT_DIR"
 PARAM_COUNTS=(12 16 20 24 28)
 LAYERS=(3 4 5 6 7)
 
-FRAMEWORKS=("logosq" "qiskit" "pennylane" "yao")
+FRAMEWORKS=("logosq" "qiskit" "pennylane" "yao" "qsharp")
 
 echo "=========================================="
 echo "VQE Parameter Sweep Benchmark"
@@ -78,6 +78,17 @@ for framework in "${FRAMEWORKS[@]}"; do
                     echo "    ✗ Failed"
                 fi
                 ;;
+            qsharp)
+                if VQA_LAYERS="$layers" VQA_OUTPUT_FILE="$output_file" dotnet run --project "${REPO_ROOT}/qsharp/VQA/VQA.csproj" --configuration Release > /dev/null 2>&1; then
+                    if [ -f "$output_file" ]; then
+                        echo "    ✓ Completed"
+                    else
+                        echo "    ✗ JSON file not found"
+                    fi
+                else
+                    echo "    ✗ Failed"
+                fi
+                ;;
         esac
     done
     echo ""
@@ -94,7 +105,7 @@ import os
 script_dir = "${SCRIPT_DIR}"
 output_dir = "${OUTPUT_DIR}"
 
-frameworks = ["logosq", "qiskit", "pennylane", "yao"]
+frameworks = ["logosq", "qiskit", "pennylane", "yao", "qsharp"]
 param_counts = [12, 16, 20, 24, 28]
 
 results = []

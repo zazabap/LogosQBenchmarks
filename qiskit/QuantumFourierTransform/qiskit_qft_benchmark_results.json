@@ -6,23 +6,23 @@
       "name": "QFT-1",
       "num_qubits": 1,
       "num_gates": 1,
-      "execution_time_ms": 2.0399093627929688,
-      "memory_usage_mb": 0.25,
+      "execution_time_ms": 1.2867450714111328,
+      "memory_usage_mb": 0.42578125,
       "circuit_depth": 1
     },
     {
       "name": "QFT-2",
       "num_qubits": 2,
       "num_gates": 4,
-      "execution_time_ms": 1.5816688537597656,
-      "memory_usage_mb": 0.72265625,
+      "execution_time_ms": 1.0616779327392578,
+      "memory_usage_mb": 0.51953125,
       "circuit_depth": 1
     },
     {
       "name": "QFT-3",
       "num_qubits": 3,
       "num_gates": 9,
-      "execution_time_ms": 1.9016265869140625,
+      "execution_time_ms": 1.2924671173095703,
       "memory_usage_mb": 0.125,
       "circuit_depth": 1
     },
@@ -30,7 +30,7 @@
       "name": "QFT-4",
       "num_qubits": 4,
       "num_gates": 16,
-      "execution_time_ms": 2.7582645416259766,
+      "execution_time_ms": 1.758575439453125,
       "memory_usage_mb": 0.0,
       "circuit_depth": 1
     },
@@ -38,7 +38,7 @@
       "name": "QFT-5",
       "num_qubits": 5,
       "num_gates": 25,
-      "execution_time_ms": 3.2160282135009766,
+      "execution_time_ms": 2.0461082458496094,
       "memory_usage_mb": 0.0,
       "circuit_depth": 1
     },
@@ -46,7 +46,7 @@
       "name": "QFT-6",
       "num_qubits": 6,
       "num_gates": 36,
-      "execution_time_ms": 4.314661026000977,
+      "execution_time_ms": 2.633333206176758,
       "memory_usage_mb": 0.125,
       "circuit_depth": 1
     },
@@ -54,7 +54,7 @@
       "name": "QFT-7",
       "num_qubits": 7,
       "num_gates": 49,
-      "execution_time_ms": 5.318164825439453,
+      "execution_time_ms": 3.260374069213867,
       "memory_usage_mb": 0.125,
       "circuit_depth": 1
     },
@@ -62,7 +62,7 @@
       "name": "QFT-8",
       "num_qubits": 8,
       "num_gates": 64,
-      "execution_time_ms": 6.44230842590332,
+      "execution_time_ms": 3.992795944213867,
       "memory_usage_mb": 0.125,
       "circuit_depth": 1
     },
@@ -70,7 +70,7 @@
       "name": "QFT-9",
       "num_qubits": 9,
       "num_gates": 81,
-      "execution_time_ms": 9.289741516113281,
+      "execution_time_ms": 6.031274795532227,
       "memory_usage_mb": 0.125,
       "circuit_depth": 1
     },
@@ -78,10 +78,26 @@
       "name": "QFT-10",
       "num_qubits": 10,
       "num_gates": 100,
-      "execution_time_ms": 9.725093841552734,
+      "execution_time_ms": 5.980730056762695,
       "memory_usage_mb": 0.0,
+      "circuit_depth": 1
+    },
+    {
+      "name": "QFT-11",
+      "num_qubits": 11,
+      "num_gates": 121,
+      "execution_time_ms": 7.585048675537109,
+      "memory_usage_mb": 0.125,
+      "circuit_depth": 1
+    },
+    {
+      "name": "QFT-12",
+      "num_qubits": 12,
+      "num_gates": 144,
+      "execution_time_ms": 9.841442108154297,
+      "memory_usage_mb": 0.25,
       "circuit_depth": 1
     }
   ],
-  "total_time_ms": 49.642324447631836
+  "total_time_ms": 49.08251762390137
 }

@@ -19,6 +19,7 @@ import numpy as np
 import warnings
 from typing import Tuple, List, Dict
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 import os
 
 # Suppress some PennyLane warnings for cleaner output
@@ -33,6 +34,34 @@ class PennyLaneGradientBugDemo:
     def __init__(self):
         self.results = {}
         self.setup_devices()
+    
+    def add_cnot_bug_marker(self, ax, x_position, wire_start, wire_end, width=0.8):
+        """Add a red block mark over a CNOT gate to indicate a bug location"""
+        if ax is None:
+            return
+        # Calculate height to cover both wires (CNOT spans multiple wires)
+        # In PennyLane, wires are typically spaced 1 unit apart
+        wire_span = abs(wire_end - wire_start)
+        height = wire_span + 0.6  # Cover the wire span plus some padding
+        
+        # Center the marker vertically on the CNOT gate
+        # CNOT gates are centered between the control and target wires
+        y_center = (wire_start + wire_end) / 2.0
+        y_position = y_center - height/2
+        
+        options = {
+            'facecolor': '#f57e7e',  # Red fill color
+            'edgecolor': '#d32f2f',  # Darker red edge
+            'linewidth': 6,
+            'alpha': 0.3,  # Semi-transparent so circuit is still visible
+            'zorder': 10  # Above circuit elements to be clearly visible
+        }
+        rect = patches.Rectangle(
+            (x_position - width/2, y_position),
+            width, height,
+            **options
+        )
+        ax.add_patch(rect)
     
     def setup_devices(self):
         """Setup different devices for testing"""
@@ -81,8 +110,11 @@ class PennyLaneGradientBugDemo:
         print("-" * 70)
         _ = circuit_bad(params)  # Execute once to build circuit
         print("\nCircuit Structure (with interleaved non-parameterized gates):")
-        result = qml.draw_mpl(circuit_bad, decimals=3, wire_options={'color':'teal', 'linewidth': 5})(params)
+        result = qml.draw_mpl(circuit_bad, decimals=3, style='black_white', wire_options={'color':'black', 'linewidth': 2})(params)
         fig, ax = result if isinstance(result, tuple) else (result, None)
+        # Add red bug marker over the CNOT gate (position 1, wires 0-1)
+        if ax is not None:
+            self.add_cnot_bug_marker(ax, x_position=1.0, wire_start=0, wire_end=1, width=0.8)
         plt.savefig('circuit_diagrams/bug1_invalid_generator_operations.png', dpi=150, bbox_inches='tight')
         plt.close(fig)
         print("  ✓ Circuit diagram saved to: circuit_diagrams/bug1_invalid_generator_operations.png")
@@ -184,8 +216,11 @@ class PennyLaneGradientBugDemo:
         test_params = np.array([0.5, 0.3, 0.2, 0.1])
         _ = circuit_nan_risk(test_params)  # Execute once to build circuit
         print("\nCircuit Structure (with potential NaN-producing operations):")
-        result = qml.draw_mpl(circuit_nan_risk, decimals=3, wire_options={'color':'teal', 'linewidth': 5})(test_params)
+        result = qml.draw_mpl(circuit_nan_risk, decimals=3, style='black_white', wire_options={'color':'black', 'linewidth': 2})(test_params)
         fig, ax = result if isinstance(result, tuple) else (result, None)
+        # Add red bug marker over the CNOT gate (position 2, wires 0-1)
+        if ax is not None:
+            self.add_cnot_bug_marker(ax, x_position=2.0, wire_start=0, wire_end=1, width=0.8)
         plt.savefig('circuit_diagrams/bug4_silent_nan_errors.png', dpi=150, bbox_inches='tight')
         plt.close(fig)
         print("  ✓ Circuit diagram saved to: circuit_diagrams/bug4_silent_nan_errors.png")
@@ -272,8 +307,11 @@ class PennyLaneGradientBugDemo:
         print("-" * 70)
         _ = circuit_param_reuse(params)  # Execute once to build circuit
         print("\nCircuit Structure (with parameter reuse):")
-        result = qml.draw_mpl(circuit_param_reuse, decimals=3, wire_options={'color':'teal', 'linewidth': 5})(params)
+        result = qml.draw_mpl(circuit_param_reuse, decimals=3, style='black_white', wire_options={'color':'black', 'linewidth': 2})(params)
         fig, ax = result if isinstance(result, tuple) else (result, None)
+        # Add red bug marker over the CNOT gate (position 1, wires 0-1)
+        if ax is not None:
+            self.add_cnot_bug_marker(ax, x_position=1.0, wire_start=0, wire_end=1, width=0.8)
         plt.savefig('circuit_diagrams/bug5_parameter_reuse.png', dpi=150, bbox_inches='tight')
         plt.close(fig)
         print("  ✓ Circuit diagram saved to: circuit_diagrams/bug5_parameter_reuse.png")
@@ -378,8 +416,11 @@ class PennyLaneGradientBugDemo:
         print("-" * 70)
         _ = circuit_order1(params)  # Execute once to build circuit
         print("\nCircuit 1 Structure (Order: param → entangle → param):")
-        result1 = qml.draw_mpl(circuit_order1, decimals=3, wire_options={'color':'teal', 'linewidth': 5})(params)
+        result1 = qml.draw_mpl(circuit_order1, decimals=3, style='black_white', wire_options={'color':'black', 'linewidth': 2})(params)
         fig1, ax1 = result1 if isinstance(result1, tuple) else (result1, None)
+        # Add red bug marker over the CNOT gate (position 1, wires 0-1)
+        if ax1 is not None:
+            self.add_cnot_bug_marker(ax1, x_position=1.0, wire_start=0, wire_end=1, width=0.8)
         plt.savefig('circuit_diagrams/bug6a_circuit_order1.png', dpi=150, bbox_inches='tight')
         plt.close(fig1)
         print("  ✓ Circuit diagram saved to: circuit_diagrams/bug6a_circuit_order1.png")
@@ -387,8 +428,11 @@ class PennyLaneGradientBugDemo:
         
         _ = circuit_order2(params)  # Execute once to build circuit
         print("\nCircuit 2 Structure (Order: entangle → param → param):")
-        result2 = qml.draw_mpl(circuit_order2, decimals=3, wire_options={'color':'teal', 'linewidth': 5})(params)
+        result2 = qml.draw_mpl(circuit_order2, decimals=3, style='black_white', wire_options={'color':'black', 'linewidth': 2})(params)
         fig2, ax2 = result2 if isinstance(result2, tuple) else (result2, None)
+        # Add red bug marker over the CNOT gate (position 0, wires 0-1)
+        if ax2 is not None:
+            self.add_cnot_bug_marker(ax2, x_position=0.0, wire_start=0, wire_end=1, width=0.8)
         plt.savefig('circuit_diagrams/bug6a_circuit_order2.png', dpi=150, bbox_inches='tight')
         plt.close(fig2)
         print("  ✓ Circuit diagram saved to: circuit_diagrams/bug6a_circuit_order2.png")
@@ -523,13 +567,23 @@ class PennyLaneGradientBugDemo:
         print("-" * 70)
         _ = training_vqc(params, data)  # Execute once to build circuit
         print("\nComplex VQC Structure (combines multiple potential issues):")
-        result = qml.draw_mpl(training_vqc, decimals=3, wire_options={'color':'teal', 'linewidth': 5})(params, data)
+        result = qml.draw_mpl(training_vqc, decimals=3, style='black_white', wire_options={'color':'black', 'linewidth': 2})(params, data)
         # Handle both (fig, ax) tuple and single fig return
         if isinstance(result, tuple):
             fig, ax = result
         else:
             fig = result
             ax = None
+        # Add red bug markers over CNOT gates
+        if ax is not None:
+            # Mark CNOT gates: they appear sequentially after data embedding (pos 0) and first param layer (pos 1)
+            # In PennyLane, sequential gates get different x positions
+            # CNOT(wires=[0, 1]) - first CNOT at position 2
+            self.add_cnot_bug_marker(ax, x_position=2.0, wire_start=0, wire_end=1, width=0.8)
+            # CNOT(wires=[2, 3]) - second CNOT at position 3
+            self.add_cnot_bug_marker(ax, x_position=1.0, wire_start=2, wire_end=3, width=0.8)
+            # CNOT(wires=[0, 2]) - third CNOT at position 4
+            self.add_cnot_bug_marker(ax, x_position=3.0, wire_start=0, wire_end=2, width=0.8)
         plt.savefig('circuit_diagrams/bug6_complex_vqc_training.png', dpi=150, bbox_inches='tight')
         plt.close(fig)
         print("  ✓ Circuit diagram saved to: circuit_diagrams/bug6_complex_vqc_training.png")

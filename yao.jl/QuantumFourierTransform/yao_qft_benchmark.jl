@@ -390,9 +390,9 @@ function print_scaling_analysis(results)
 end
 
 function main()
-    # Standardized benchmark: 1-10 qubits, 5 trials each
+    # Standardized benchmark: 1-12 qubits, 5 trials each
     min_qubits = 1
-    max_qubits = 10
+    max_qubits = 12
     trials = 5
     
     println("🎯 Running standardized QFT benchmark: $min_qubits to $max_qubits qubits, $trials trials each")

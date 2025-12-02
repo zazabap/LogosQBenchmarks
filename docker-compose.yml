@@ -7,15 +7,20 @@ services:
     ports:
       - "8080:8080"
     volumes:
+      - .:/app:cached
       - ./results:/app/results
       - ./logs:/app/logs
     environment:
       - RUST_LOG=info
     command: >
       sh -c "
-        echo 'Starting LogosQ Benchmark Suite...' &&
-        ./run_benchmarks.sh &&
-        echo 'Starting visualization server...' &&
-        cd visualization &&
-        npm start
+        echo 'LogosQ Benchmark Suite Container Ready' &&
+        echo 'Available benchmarks:' &&
+        echo '  - bash scripts/run_vqa_parameter_sweep.sh' &&
+        echo '  - bash scripts/run_xyz_heisenberg_benchmark.sh' &&
+        echo '  - bash scripts/run_qft_benchmark.sh' &&
+        echo '  - bash scripts/run_gradient_tests.sh' &&
+        echo '' &&
+        echo 'Starting interactive shell...' &&
+        /bin/bash
       "
