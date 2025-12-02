@@ -16,6 +16,7 @@ using JSON
 using LinearAlgebra
 using Printf
 using Random
+using Base.MathConstants
 
 # Load only the Yao components we need
 using YaoBlocks
@@ -87,7 +88,7 @@ function create_xyz_heisenberg_hamiltonian_terms(
         for i in 1:num_qubits
             label = ["I" for _ in 1:num_qubits]
             label[i] = "Z"
-            push!(terms, (join(label), -external_field))
+            push!(terms, (join(label), external_field))  # Negate to match other frameworks
         end
     end
     
@@ -125,6 +126,12 @@ function build_time_evolution_circuit(
     terms::Vector{Tuple{String, Float64}},
     time_steps::Int,
     dt::Float64,
+    jx::Float64,
+    jy::Float64,
+    jz::Float64,
+    time_dependent_field::Bool = false,
+    field_amplitude::Float64 = 0.0,
+    field_frequency::Float64 = 1.0,
 )
     ops = Any[]
     
@@ -134,7 +141,18 @@ function build_time_evolution_circuit(
     end
     
     # Apply time evolution using Trotterization
-    for _ in 1:time_steps
+    current_time = 0.0
+    for step in 1:time_steps
+        # Get Hamiltonian terms (may be time-dependent)
+        if time_dependent_field
+            # Create time-dependent Hamiltonian with oscillating field
+            h_t = field_amplitude * sin(field_frequency * current_time)
+            # Note: jx, jy, jz are captured from outer scope
+            terms = create_xyz_heisenberg_hamiltonian_terms(
+                num_qubits, jx, jy, jz, h_t
+            )
+        end
+        
         # For each Hamiltonian term, apply exp(-i*H_i*dt)
         for (label, coeff) in terms
             # Find non-identity Pauli operators
@@ -187,6 +205,8 @@ function build_time_evolution_circuit(
                 end
             end
         end
+        
+        current_time += dt
     end
     
     return chain(num_qubits, ops...)
@@ -205,6 +225,9 @@ function run_xyz_heisenberg_benchmark(
     external_field::Float64 = 0.0,
     time_steps::Int = 10,
     dt::Float64 = 0.1,
+    time_dependent_field::Bool = false,
+    field_amplitude::Float64 = 0.0,
+    field_frequency::Float64 = 1.0,
 )
     # Create Hamiltonian terms
     terms = create_xyz_heisenberg_hamiltonian_terms(
@@ -226,16 +249,37 @@ function run_xyz_heisenberg_benchmark(
     initial_energy = calculate_energy(initial_state_vec, h_matrix)
     
     # Build circuit
-    circuit = build_time_evolution_circuit(num_qubits, terms, time_steps, dt)
+    circuit = build_time_evolution_circuit(
+        num_qubits, terms, time_steps, dt, jx, jy, jz,
+        time_dependent_field, field_amplitude, field_frequency
+    )
+    
+    # Measure memory before
+    mem_before = Base.Sys.maxrss() / 1024 / 1024  # MB
     
     # Measure execution time
     start_time = time()
     final_state = apply!(initial_state, circuit)
     runtime_ms = (time() - start_time) * 1000
     
+    # Measure memory after
+    mem_after = Base.Sys.maxrss() / 1024 / 1024  # MB
+    memory_usage_mb = max(0.0, mem_after - mem_before)
+    
     # Calculate final energy
+    # For time-dependent case, use the Hamiltonian at final time
     final_state_vec = vec(final_state.state)
-    final_energy = calculate_energy(final_state_vec, h_matrix)
+    if time_dependent_field
+        final_time = time_steps * dt
+        h_final = field_amplitude * sin(field_frequency * final_time)
+        final_terms = create_xyz_heisenberg_hamiltonian_terms(
+            num_qubits, jx, jy, jz, h_final
+        )
+        final_h_matrix = build_hamiltonian_matrix(final_terms, num_qubits)
+        final_energy = calculate_energy(final_state_vec, final_h_matrix)
+    else
+        final_energy = calculate_energy(final_state_vec, h_matrix)
+    end
     energy_change = final_energy - initial_energy
     
     # Count operations (approximate: each time step has Trotter steps)
@@ -258,6 +302,10 @@ function run_xyz_heisenberg_benchmark(
         "energy_change" => round(energy_change, digits=10),
         "runtime_ms" => round(runtime_ms, digits=2),
         "num_operations" => num_operations,
+        "memory_usage_mb" => round(memory_usage_mb, digits=2),
+        "time_dependent_field" => time_dependent_field,
+        "field_amplitude" => time_dependent_field ? round(field_amplitude, digits=6) : 0.0,
+        "field_frequency" => time_dependent_field ? round(field_frequency, digits=6) : 0.0,
     )
 end
 
@@ -274,6 +322,11 @@ function main()
     jz = parse(Float64, get(ENV, "XYZ_JZ", "1.0"))
     external_field = parse(Float64, get(ENV, "XYZ_FIELD", "0.0"))
     
+    # Time-dependent field parameters (for non-conserved energy case)
+    time_dependent = lowercase(get(ENV, "XYZ_TIME_DEPENDENT", "true")) == "true"
+    field_amplitude = parse(Float64, get(ENV, "XYZ_FIELD_AMPLITUDE", "2.0"))
+    field_frequency = parse(Float64, get(ENV, "XYZ_FIELD_FREQUENCY", "1.0"))
+    
     # Run benchmark
     result = run_xyz_heisenberg_benchmark(
         num_qubits,
@@ -283,6 +336,9 @@ function main()
         external_field,
         time_steps,
         dt,
+        time_dependent,
+        field_amplitude,
+        field_frequency,
     )
     
     # Write to JSON file

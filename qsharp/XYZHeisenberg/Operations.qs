@@ -13,7 +13,10 @@ namespace XYZHeisenberg {
         jz : Double,
         h : Double,
         timeSteps : Int,
-        dt : Double
+        dt : Double,
+        timeDependentField : Bool,
+        fieldAmplitude : Double,
+        fieldFrequency : Double
     ) : Unit {
         use qubits = Qubit[numQubits];
         
@@ -21,6 +24,7 @@ namespace XYZHeisenberg {
         ApplyToEach(X, qubits);
         
         // Trotter evolution
+        mutable currentTime = 0.0;
         for step in 1..timeSteps {
             // Nearest neighbor interactions
             for i in 0..numQubits-2 {
@@ -35,12 +39,18 @@ namespace XYZHeisenberg {
                 }
             }
             
-            // External field
-            if (AbsD(h) > 1e-9) {
+            // External field (time-dependent if enabled)
+            mutable h_t = h;
+            if (timeDependentField) {
+                set h_t = fieldAmplitude * Sin(fieldFrequency * currentTime);
+            }
+            if (AbsD(h_t) > 1e-9) {
                 for i in 0..numQubits-1 {
-                    Rz(-2.0 * h * dt, qubits[i]);
+                    Rz(-2.0 * h_t * dt, qubits[i]);
                 }
             }
+            
+            set currentTime = currentTime + dt;
         }
         
         // Dump the machine state to be read by the driver

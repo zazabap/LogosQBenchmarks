@@ -47,7 +47,13 @@ export XYZ_START_QUBITS="$START_QUBITS"
 export XYZ_END_QUBITS="$END_QUBITS"
 export XYZ_STEP_QUBITS="$STEP_QUBITS"
 
+# Enable time-dependent field for non-conserved energy case
+export XYZ_TIME_DEPENDENT="true"
+export XYZ_FIELD_AMPLITUDE="2.0"
+export XYZ_FIELD_FREQUENCY="1.0"
+
 echo "Qubit sweep will run for: ${QUBIT_COUNTS[*]}"
+echo "Time-dependent field enabled: h(t) = ${XYZ_FIELD_AMPLITUDE} * sin(${XYZ_FIELD_FREQUENCY}*t)"
 
 FRAMEWORKS=("logosq" "pennylane" "qiskit" "yao" "qsharp")
 
@@ -67,18 +73,54 @@ for framework in "${FRAMEWORKS[@]}"; do
         
         case $framework in
             logosq)
-                if cd "${REPO_ROOT}/logosq" && XYZ_QUBITS="$qubits" XYZ_OUTPUT_FILE="$output_file" cargo run --example xyz_heisenberg > /dev/null 2>&1; then
+                # Check for cargo in multiple ways
+                CARGO_CMD=""
+                if command -v cargo &> /dev/null; then
+                    CARGO_CMD="cargo"
+                elif [ -f "${HOME}/.cargo/bin/cargo" ]; then
+                    CARGO_CMD="${HOME}/.cargo/bin/cargo"
+                elif [ -f "/root/.cargo/bin/cargo" ]; then
+                    CARGO_CMD="/root/.cargo/bin/cargo"
+                fi
+                
+                if [ -z "$CARGO_CMD" ]; then
+                    echo "    ✗ Cargo not found, skipping LogosQ"
+                    continue
+                fi
+                
+                # Redirect stderr to a temp file to capture errors
+                error_log="/tmp/logosq_xyz_${qubits}qubits_error.log"
+                # Temporarily disable set -e for this command to handle errors gracefully
+                set +e
+                cd "${REPO_ROOT}/logosq" && \
+                    XYZ_QUBITS="$qubits" \
+                    XYZ_OUTPUT_FILE="$output_file" \
+                    XYZ_TIME_DEPENDENT="${XYZ_TIME_DEPENDENT:-true}" \
+                    XYZ_FIELD_AMPLITUDE="${XYZ_FIELD_AMPLITUDE:-2.0}" \
+                    XYZ_FIELD_FREQUENCY="${XYZ_FIELD_FREQUENCY:-1.0}" \
+                    "$CARGO_CMD" run --example xyz_heisenberg --release > "$error_log" 2>&1
+                cargo_exit_code=$?
+                set -e
+                
+                if [ $cargo_exit_code -eq 0 ]; then
                     if [ -f "$output_file" ]; then
                         echo "    ✓ Completed"
                     else
                         echo "    ✗ JSON file not found"
+                        cat "$error_log" | tail -5
                     fi
                 else
                     echo "    ✗ Failed"
+                    cat "$error_log" | tail -10
                 fi
                 ;;
             pennylane)
-                if XYZ_QUBITS="$qubits" XYZ_OUTPUT_FILE="$output_file" python3 "${REPO_ROOT}/pennylane/XYZHeisenberg/xyz_h.py" > /dev/null 2>&1; then
+                if XYZ_QUBITS="$qubits" \
+                   XYZ_OUTPUT_FILE="$output_file" \
+                   XYZ_TIME_DEPENDENT="${XYZ_TIME_DEPENDENT:-true}" \
+                   XYZ_FIELD_AMPLITUDE="${XYZ_FIELD_AMPLITUDE:-2.0}" \
+                   XYZ_FIELD_FREQUENCY="${XYZ_FIELD_FREQUENCY:-1.0}" \
+                   python3 "${REPO_ROOT}/pennylane/XYZHeisenberg/xyz_h.py" > /dev/null 2>&1; then
                     if [ -f "$output_file" ]; then
                         echo "    ✓ Completed"
                     else
@@ -89,7 +131,12 @@ for framework in "${FRAMEWORKS[@]}"; do
                 fi
                 ;;
             qiskit)
-                if XYZ_QUBITS="$qubits" XYZ_OUTPUT_FILE="$output_file" python3 "${REPO_ROOT}/qiskit/XYZHeisenberg/xyz_h.py" > /dev/null 2>&1; then
+                if XYZ_QUBITS="$qubits" \
+                   XYZ_OUTPUT_FILE="$output_file" \
+                   XYZ_TIME_DEPENDENT="${XYZ_TIME_DEPENDENT:-true}" \
+                   XYZ_FIELD_AMPLITUDE="${XYZ_FIELD_AMPLITUDE:-2.0}" \
+                   XYZ_FIELD_FREQUENCY="${XYZ_FIELD_FREQUENCY:-1.0}" \
+                   python3 "${REPO_ROOT}/qiskit/XYZHeisenberg/xyz_h.py" > /dev/null 2>&1; then
                     if [ -f "$output_file" ]; then
                         echo "    ✓ Completed"
                     else
@@ -100,7 +147,12 @@ for framework in "${FRAMEWORKS[@]}"; do
                 fi
                 ;;
             yao)
-                if XYZ_QUBITS="$qubits" XYZ_OUTPUT_FILE="$output_file" julia --project="${REPO_ROOT}/yao.jl" "${REPO_ROOT}/yao.jl/XYZHeisenberg/xyz_h.jl" > /dev/null 2>&1; then
+                if XYZ_QUBITS="$qubits" \
+                   XYZ_OUTPUT_FILE="$output_file" \
+                   XYZ_TIME_DEPENDENT="${XYZ_TIME_DEPENDENT:-true}" \
+                   XYZ_FIELD_AMPLITUDE="${XYZ_FIELD_AMPLITUDE:-2.0}" \
+                   XYZ_FIELD_FREQUENCY="${XYZ_FIELD_FREQUENCY:-1.0}" \
+                   julia --project="${REPO_ROOT}/yao.jl" "${REPO_ROOT}/yao.jl/XYZHeisenberg/xyz_h.jl" > /dev/null 2>&1; then
                     if [ -f "$output_file" ]; then
                         echo "    ✓ Completed"
                     else
@@ -111,7 +163,12 @@ for framework in "${FRAMEWORKS[@]}"; do
                 fi
                 ;;
             qsharp)
-                if XYZ_QUBITS="$qubits" XYZ_OUTPUT_FILE="$output_file" dotnet run --project "${REPO_ROOT}/qsharp/XYZHeisenberg/XYZHeisenberg.csproj" --configuration Release > /dev/null 2>&1; then
+                if XYZ_QUBITS="$qubits" \
+                   XYZ_OUTPUT_FILE="$output_file" \
+                   XYZ_TIME_DEPENDENT="${XYZ_TIME_DEPENDENT:-true}" \
+                   XYZ_FIELD_AMPLITUDE="${XYZ_FIELD_AMPLITUDE:-2.0}" \
+                   XYZ_FIELD_FREQUENCY="${XYZ_FIELD_FREQUENCY:-1.0}" \
+                   dotnet run --project "${REPO_ROOT}/qsharp/XYZHeisenberg/XYZHeisenberg.csproj" --configuration Release > /dev/null 2>&1; then
                     if [ -f "$output_file" ]; then
                         echo "    ✓ Completed"
                     else
@@ -182,11 +239,11 @@ if command -v python3 &> /dev/null; then
     if python3 "${SCRIPT_DIR}/plot_xyz_heisenberg_comparison.py" > /tmp/xyz_plot_generation.log 2>&1; then
         echo "✓ Comparison plots generated successfully"
         echo ""
-        echo "Generated plots:"
-        echo "  • xyz_heisenberg_runtime_comparison.png"
-        echo "  • xyz_heisenberg_energy_evolution.png"
-        echo "  • xyz_heisenberg_scaling_analysis.png"
+        echo "Generated plots (non-conserved energy case):"
+        echo "  • xyz_heisenberg_runtime_scaling_log.png"
         echo "  • xyz_heisenberg_operations_comparison.png"
+        echo "  • xyz_heisenberg_memory_usage.png"
+        echo "  • xyz_heisenberg_energy_evolution.png"
         echo ""
         echo "Location: ${RESULTS_BASE_DIR}"
     else

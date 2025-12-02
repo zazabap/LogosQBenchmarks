@@ -20,16 +20,10 @@ def build_xyz_time_evolution_qnode(
 ) -> qml.QNode:
     """Build the same time-evolution circuit as in `build_time_evolution_circuit`
     from `xyz_h.py`, but return a QNode suitable for visualization.
+    
+    Uses explicit Trotter-Suzuki decomposition: exp(-i*H*dt) ≈ ∏ᵢ exp(-i*Hᵢ*dt)
+    Each term exp(-i*Hᵢ*dt) is implemented as a rotation gate.
     """
-    # Hamiltonian matches the benchmark setup
-    hamiltonian = create_xyz_heisenberg_hamiltonian(
-        num_qubits=num_qubits,
-        jx=jx,
-        jy=jy,
-        jz=jz,
-        external_field=external_field,
-    )
-
     dev = qml.device("default.qubit", wires=num_qubits)
 
     @qml.qnode(dev)
@@ -38,9 +32,33 @@ def build_xyz_time_evolution_qnode(
         for i in range(num_qubits):
             qml.PauliX(i)
 
-        # Apply time evolution using first-order Trotterization, as in `xyz_h.py`
-        for _ in range(time_steps):
-            qml.ApproxTimeEvolution(hamiltonian, time=dt, n=1)
+        # Apply time evolution using explicit Trotter-Suzuki decomposition
+        # For H = -Σᵢ [Jₓ XᵢXᵢ₊₁ + Jᵧ YᵢYᵢ₊₁ + Jᵧ ZᵢZᵢ₊₁] - h Σᵢ Zᵢ
+        # exp(-i*H*dt) ≈ ∏ᵢ exp(-i*Hᵢ*dt)
+        for step in range(time_steps):
+            # Nearest-neighbor interactions (XX, YY, ZZ)
+            for i in range(num_qubits - 1):
+                # XX interaction: exp(-i*(-Jₓ*XᵢXᵢ₊₁)*dt) = exp(i*Jₓ*XᵢXᵢ₊₁*dt)
+                # RXX(θ) = exp(-i*θ/2 * X⊗X), so RXX(-2*Jₓ*dt) = exp(i*Jₓ*dt * X⊗X)
+                if abs(jx) > 1e-10:
+                    qml.IsingXX(-2.0 * jx * dt, wires=[i, i + 1])
+                
+                # YY interaction: exp(-i*(-Jᵧ*YᵢYᵢ₊₁)*dt) = exp(i*Jᵧ*YᵢYᵢ₊₁*dt)
+                # RYY(θ) = exp(-i*θ/2 * Y⊗Y), so RYY(-2*Jᵧ*dt) = exp(i*Jᵧ*dt * Y⊗Y)
+                if abs(jy) > 1e-10:
+                    qml.IsingYY(-2.0 * jy * dt, wires=[i, i + 1])
+                
+                # ZZ interaction: exp(-i*(-Jᵧ*ZᵢZᵢ₊₁)*dt) = exp(i*Jᵧ*ZᵢZᵢ₊₁*dt)
+                # RZZ(θ) = exp(-i*θ/2 * Z⊗Z), so RZZ(-2*Jᵧ*dt) = exp(i*Jᵧ*dt * Z⊗Z)
+                if abs(jz) > 1e-10:
+                    qml.IsingZZ(-2.0 * jz * dt, wires=[i, i + 1])
+            
+            # External magnetic field (Z direction)
+            # exp(-i*(-h*Zᵢ)*dt) = exp(i*h*Zᵢ*dt)
+            # RZ(θ) = exp(-i*θ/2 * Z), so RZ(-2*h*dt) = exp(i*h*dt * Z)
+            if abs(external_field) > 1e-10:
+                for i in range(num_qubits):
+                    qml.RZ(-2.0 * external_field * dt, wires=i)
 
         # Dummy measurement to make the circuit drawable
         return qml.probs(wires=range(num_qubits))
@@ -78,13 +96,12 @@ def visualize_xyz_circuit(
     _ = circuit()
 
     # Draw with matplotlib
-    # Use device expansion so ApproxTimeEvolution is decomposed into
-    # elementary gates (CNOT/Rot/etc.) for a clearer circuit diagram.
+    # Since we're using explicit gates (IsingXX, IsingYY, IsingZZ, RZ),
+    # no expansion strategy is needed - the gates are already decomposed.
     fig, ax = qml.draw_mpl(
         circuit,
         style="black_white",
         decimals=2,
-        expansion_strategy="device",
     )()
 
     title = (
@@ -112,6 +129,7 @@ def visualize_standard_setups() -> None:
     # (qubits, steps, dt, output_name)
     configs = [
         (3, 3, 0.1, "xyz_heisenberg_circuit_3q_3steps.png"),
+        (4, 4, 0.1, "xyz_heisenberg_circuit_4q_4steps.png"),
         (4, 5, 0.1, "xyz_heisenberg_circuit_4q_5steps.png"),
         (5, 5, 0.1, "xyz_heisenberg_circuit_5q_5steps.png"),
     ]

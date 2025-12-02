@@ -18,6 +18,7 @@ from typing import List, Tuple
 
 import numpy as np
 import pennylane as qml
+import psutil
 
 
 def create_xyz_heisenberg_hamiltonian(
@@ -83,9 +84,18 @@ def build_time_evolution_circuit(
     hamiltonian: qml.Hamiltonian,
     time_steps: int,
     dt: float,
+    jx: float,
+    jy: float,
+    jz: float,
+    time_dependent_field: bool = False,
+    field_amplitude: float = 0.0,
+    field_frequency: float = 1.0,
 ) -> qml.QNode:
     """
     Build a circuit that implements time evolution using Trotterization.
+    
+    If time_dependent_field is True, adds a time-dependent external field
+    h(t) = field_amplitude * sin(field_frequency * t) to break energy conservation.
     """
     dev = qml.device("default.qubit", wires=num_qubits)
     
@@ -96,8 +106,18 @@ def build_time_evolution_circuit(
             qml.PauliX(i)
         
         # Apply time evolution using Trotterization
-        for _ in range(time_steps):
-            qml.ApproxTimeEvolution(hamiltonian, time=dt, n=1)
+        current_time = 0.0
+        for step in range(time_steps):
+            if time_dependent_field:
+                # Create time-dependent Hamiltonian with oscillating field
+                h_t = field_amplitude * np.sin(field_frequency * current_time)
+                time_dep_hamiltonian = create_xyz_heisenberg_hamiltonian(
+                    num_qubits, jx, jy, jz, h_t
+                )
+                qml.ApproxTimeEvolution(time_dep_hamiltonian, time=dt, n=1)
+            else:
+                qml.ApproxTimeEvolution(hamiltonian, time=dt, n=1)
+            current_time += dt
         
         return qml.state()
     
@@ -112,6 +132,9 @@ def run_xyz_heisenberg_benchmark(
     external_field: float = 0.0,
     time_steps: int = 10,
     dt: float = 0.1,
+    time_dependent_field: bool = False,
+    field_amplitude: float = 0.0,
+    field_frequency: float = 1.0,
 ) -> dict:
     """
     Run the XYZ Heisenberg model benchmark.
@@ -131,15 +154,35 @@ def run_xyz_heisenberg_benchmark(
     initial_energy = calculate_energy(initial_state, hamiltonian, num_qubits)
     
     # Build and execute circuit
-    circuit = build_time_evolution_circuit(num_qubits, hamiltonian, time_steps, dt)
+    circuit = build_time_evolution_circuit(
+        num_qubits, hamiltonian, time_steps, dt, jx, jy, jz,
+        time_dependent_field, field_amplitude, field_frequency
+    )
+    
+    # Measure memory before
+    process = psutil.Process(os.getpid())
+    mem_before = process.memory_info().rss / 1024 / 1024  # MB
     
     # Measure execution time
     start = time.perf_counter()
     final_state = circuit()
     runtime_ms = (time.perf_counter() - start) * 1e3
     
+    # Measure memory after
+    mem_after = process.memory_info().rss / 1024 / 1024  # MB
+    memory_usage_mb = max(0.0, mem_after - mem_before)
+    
     # Calculate final energy
-    final_energy = calculate_energy(final_state, hamiltonian, num_qubits)
+    # For time-dependent case, use the Hamiltonian at final time
+    if time_dependent_field:
+        final_time = time_steps * dt
+        h_final = field_amplitude * np.sin(field_frequency * final_time)
+        final_hamiltonian = create_xyz_heisenberg_hamiltonian(
+            num_qubits, jx, jy, jz, h_final
+        )
+        final_energy = calculate_energy(final_state, final_hamiltonian, num_qubits)
+    else:
+        final_energy = calculate_energy(final_state, hamiltonian, num_qubits)
     energy_change = final_energy - initial_energy
     
     # Count operations (approximate: each time step has Trotter steps)
@@ -162,6 +205,10 @@ def run_xyz_heisenberg_benchmark(
         "energy_change": round(energy_change, 10),
         "runtime_ms": round(runtime_ms, 2),
         "num_operations": num_operations,
+        "memory_usage_mb": round(memory_usage_mb, 2),
+        "time_dependent_field": time_dependent_field,
+        "field_amplitude": round(field_amplitude, 6) if time_dependent_field else 0.0,
+        "field_frequency": round(field_frequency, 6) if time_dependent_field else 0.0,
     }
 
 
@@ -176,6 +223,11 @@ def main():
     jz = float(os.environ.get("XYZ_JZ", "1.0"))
     external_field = float(os.environ.get("XYZ_FIELD", "0.0"))
     
+    # Time-dependent field parameters (for non-conserved energy case)
+    time_dependent = os.environ.get("XYZ_TIME_DEPENDENT", "false").lower() == "true"
+    field_amplitude = float(os.environ.get("XYZ_FIELD_AMPLITUDE", "2.0"))
+    field_frequency = float(os.environ.get("XYZ_FIELD_FREQUENCY", "1.0"))
+    
     # Run benchmark
     result = run_xyz_heisenberg_benchmark(
         num_qubits=num_qubits,
@@ -185,6 +237,9 @@ def main():
         external_field=external_field,
         time_steps=time_steps,
         dt=dt,
+        time_dependent_field=time_dependent,
+        field_amplitude=field_amplitude,
+        field_frequency=field_frequency,
     )
     
     # Write to JSON file

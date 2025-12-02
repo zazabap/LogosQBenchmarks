@@ -25,6 +25,11 @@ namespace XYZHeisenberg
                 double jz = double.Parse(Environment.GetEnvironmentVariable("XYZ_JZ") ?? "1.0");
                 double field = double.Parse(Environment.GetEnvironmentVariable("XYZ_FIELD") ?? "0.0");
                 string outputFile = Environment.GetEnvironmentVariable("XYZ_OUTPUT_FILE") ?? "qsharp_xyz.json";
+                
+                // Time-dependent field parameters (for non-conserved energy case)
+                bool timeDependent = (Environment.GetEnvironmentVariable("XYZ_TIME_DEPENDENT") ?? "true").ToLower() == "true";
+                double fieldAmplitude = double.Parse(Environment.GetEnvironmentVariable("XYZ_FIELD_AMPLITUDE") ?? "2.0");
+                double fieldFrequency = double.Parse(Environment.GetEnvironmentVariable("XYZ_FIELD_FREQUENCY") ?? "1.0");
 
                 var sim = new QuantumSimulator();
                 
@@ -32,13 +37,22 @@ namespace XYZHeisenberg
                 string dumpFile = "state_dump.txt";
                 if (File.Exists(dumpFile)) File.Delete(dumpFile);
 
+                // Force GC to get cleaner memory reading
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+                long memBefore = System.Diagnostics.Process.GetCurrentProcess().PrivateMemorySize64;
+                
                 var stopwatch = System.Diagnostics.Stopwatch.StartNew();
                 
                 // Run Q# operation
-                await RunTimeEvolution.Run(sim, numQubits, jx, jy, jz, field, timeSteps, dt);
+                await RunTimeEvolution.Run(sim, numQubits, jx, jy, jz, field, timeSteps, dt, timeDependent, fieldAmplitude, fieldFrequency);
                 
                 stopwatch.Stop();
                 double runtimeMs = stopwatch.Elapsed.TotalMilliseconds;
+                
+                long memAfter = System.Diagnostics.Process.GetCurrentProcess().PrivateMemorySize64;
+                double memoryMb = (memAfter - memBefore) / (1024.0 * 1024.0);
+                if (memoryMb < 0) memoryMb = 0;
 
                 // Read State Vector
                 Complex[] finalState = ReadStateVector(dumpFile, numQubits);
@@ -50,8 +64,17 @@ namespace XYZHeisenberg
                 Complex[] initialState = new Complex[1 << numQubits];
                 initialState[(1 << numQubits) - 1] = 1.0;
 
+                // Calculate initial energy
                 double initialEnergy = CalculateEnergy(initialState, numQubits, jx, jy, jz, field);
-                double finalEnergy = CalculateEnergy(finalState, numQubits, jx, jy, jz, field);
+                
+                // Calculate final energy (use time-dependent field at final time if enabled)
+                double finalField = field;
+                if (timeDependent)
+                {
+                    double finalTime = timeSteps * dt;
+                    finalField = fieldAmplitude * Math.Sin(fieldFrequency * finalTime);
+                }
+                double finalEnergy = CalculateEnergy(finalState, numQubits, jx, jy, jz, finalField);
                 double energyChange = finalEnergy - initialEnergy;
                 
                 // Operations count
@@ -73,7 +96,11 @@ namespace XYZHeisenberg
                     final_energy = finalEnergy,
                     energy_change = energyChange,
                     runtime_ms = runtimeMs,
-                    num_operations = numOperations
+                    num_operations = numOperations,
+                    memory_usage_mb = Math.Round(memoryMb, 2),
+                    time_dependent_field = timeDependent,
+                    field_amplitude = timeDependent ? Math.Round(fieldAmplitude, 6) : 0.0,
+                    field_frequency = timeDependent ? Math.Round(fieldFrequency, 6) : 0.0
                 };
 
                 string jsonString = JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });

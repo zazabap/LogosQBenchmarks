@@ -76,14 +76,13 @@ def load_results(json_path: Path) -> List[Dict]:
         return json.load(f)
 
 
-def plot_runtime_comparison(results: List[Dict], output_dir: Path):
-    """Plot runtime vs number of qubits for all frameworks."""
+def plot_runtime_scaling_log(results: List[Dict], output_dir: Path):
+    """Plot runtime scaling analysis with runtime in log scale."""
     if not results:
-        print("No results provided to plot_runtime_comparison.")
+        print("No results provided to plot_runtime_scaling_log.")
         return
 
     all_qubits = sorted({r['qubits'] for r in results})
-
     # Group results by framework
     frameworks = {}
     for r in results:
@@ -98,24 +97,85 @@ def plot_runtime_comparison(results: List[Dict], output_dir: Path):
     
     plt.figure(figsize=(10, 6))
     for fw, fw_results in frameworks.items():
-        qubits = [r['qubits'] for r in fw_results]
-        runtimes = [r['runtime_ms'] for r in fw_results]
+        qubits = np.array([r['qubits'] for r in fw_results])
+        runtimes = np.array([r['runtime_ms'] for r in fw_results])
         color = FRAMEWORK_COLORS.get(fw, '#666666')
         marker = FRAMEWORK_MARKERS.get(fw, 'o')
         plt.plot(qubits, runtimes, marker=marker, linewidth=2.5, markersize=10,
-                label=fw, color=color, alpha=0.8)
+               label=fw, color=color, alpha=0.8)
+        
+        # Fit exponential: runtime = a * 2^(b * qubits)
+        if len(qubits) >= 3:
+            # Use log-linear fit: log(runtime) = log(a) + b * qubits
+            log_runtimes = np.log(runtimes + 1e-10)  # Add small value to avoid log(0)
+            coeffs = np.polyfit(qubits, log_runtimes, 1)
+            fit_runtimes = np.exp(coeffs[0] * qubits + coeffs[1])
+            plt.plot(qubits, fit_runtimes, '--', color=color, alpha=0.5, linewidth=1.5,
+                   label='_nolegend_')
+    
+    # Theoretical exponential reference: 2^n scaling
+    if results:
+        qubits_ref = np.array(all_qubits)
+        first_qubit = qubits_ref[0]
+        first_runtime = min([r['runtime_ms'] for r in results if r['qubits'] == int(first_qubit)])
+        theoretical = first_runtime * (2.0 ** (qubits_ref - first_qubit))
+        plt.plot(qubits_ref, theoretical, 'k--', linewidth=2, alpha=0.6,
+               label='Theoretical 2^n scaling', linestyle=':')
     
     plt.xlabel('Number of Qubits', fontweight='bold')
     plt.ylabel('Runtime (ms)', fontweight='bold')
-    plt.title('XYZ Heisenberg Model: Runtime vs Number of Qubits', fontweight='bold', fontsize=14)
+    plt.title('XYZ Heisenberg Model: Runtime Scaling (Non-Conserved Energy, Log Scale)', fontweight='bold', fontsize=14)
     plt.yscale('log')
     plt.grid(True, alpha=0.3, linestyle='--', which='both')
+    plt.legend(loc='best', framealpha=0.95, fontsize=9)
+    plt.xticks(all_qubits)
+    plt.tight_layout()
+    output_path = output_dir / 'xyz_heisenberg_runtime_scaling_log.png'
+    plt.savefig(output_path)
+    print(f"Saved runtime scaling (log scale) plot to: {output_path}")
+    plt.close()
+
+
+def plot_operations_comparison(results: List[Dict], output_dir: Path):
+    """Plot number of operations vs qubits."""
+    if not results:
+        print("No results provided to plot_operations_comparison.")
+        return
+
+    all_qubits = sorted({r['qubits'] for r in results})
+    # Group results by framework
+    frameworks = {}
+    for r in results:
+        fw = r['framework']
+        if fw not in frameworks:
+            frameworks[fw] = []
+        frameworks[fw].append(r)
+    
+    # Sort by qubit count for each framework
+    for fw in frameworks:
+        frameworks[fw].sort(key=lambda x: x['qubits'])
+    
+    print(f"  Plotting operations for {len(frameworks)} frameworks: {sorted(frameworks.keys())}")
+    
+    plt.figure(figsize=(10, 6))
+    for fw, fw_results in frameworks.items():
+        qubits = [r['qubits'] for r in fw_results]
+        operations = [r['num_operations'] for r in fw_results]
+        color = FRAMEWORK_COLORS.get(fw, '#666666')
+        marker = FRAMEWORK_MARKERS.get(fw, 'o')
+        plt.plot(qubits, operations, marker=marker, linewidth=2.5, markersize=10,
+                label=fw, color=color, alpha=0.8)
+    
+    plt.xlabel('Number of Qubits', fontweight='bold')
+    plt.ylabel('Number of Operations', fontweight='bold')
+    plt.title('XYZ Heisenberg Model: Operations vs Number of Qubits (Non-Conserved Energy)', fontweight='bold', fontsize=14)
+    plt.grid(True, alpha=0.3, linestyle='--')
     plt.legend(loc='best', framealpha=0.95)
     plt.xticks(all_qubits)
     plt.tight_layout()
-    output_path = output_dir / 'xyz_heisenberg_runtime_comparison.png'
+    output_path = output_dir / 'xyz_heisenberg_operations_comparison.png'
     plt.savefig(output_path)
-    print(f"Saved runtime comparison plot to: {output_path}")
+    print(f"Saved operations comparison plot to: {output_path}")
     plt.close()
 
 
@@ -139,17 +199,23 @@ def plot_energy_evolution(results: List[Dict], output_dir: Path):
     for fw in frameworks:
         frameworks[fw].sort(key=lambda x: x['qubits'])
     
+    print(f"  Plotting energy evolution for {len(frameworks)} frameworks: {sorted(frameworks.keys())}")
+    
     fig, axes = plt.subplots(1, 3, figsize=(18, 5))
     
     # Plot 1: Initial Energy
     ax = axes[0]
-    for fw, fw_results in frameworks.items():
+    plotted_frameworks_initial = []
+    for fw, fw_results in sorted(frameworks.items()):  # Sort for consistent ordering
         qubits = [r['qubits'] for r in fw_results]
         energies = [r['initial_energy'] for r in fw_results]
         color = FRAMEWORK_COLORS.get(fw, '#666666')
         marker = FRAMEWORK_MARKERS.get(fw, 'o')
         ax.plot(qubits, energies, marker=marker, linewidth=2.5, markersize=8,
                label=fw, color=color, alpha=0.8)
+        plotted_frameworks_initial.append(fw)
+    if len(plotted_frameworks_initial) != len(frameworks):
+        print(f"  WARNING: Only plotted {len(plotted_frameworks_initial)}/{len(frameworks)} frameworks in initial energy plot")
     ax.set_xlabel('Number of Qubits', fontweight='bold')
     ax.set_ylabel('Initial Energy', fontweight='bold')
     ax.set_title('Initial Energy vs Qubits', fontweight='bold')
@@ -159,13 +225,17 @@ def plot_energy_evolution(results: List[Dict], output_dir: Path):
     
     # Plot 2: Final Energy
     ax = axes[1]
-    for fw, fw_results in frameworks.items():
+    plotted_frameworks_final = []
+    for fw, fw_results in sorted(frameworks.items()):  # Sort for consistent ordering
         qubits = [r['qubits'] for r in fw_results]
         energies = [r['final_energy'] for r in fw_results]
         color = FRAMEWORK_COLORS.get(fw, '#666666')
         marker = FRAMEWORK_MARKERS.get(fw, 'o')
         ax.plot(qubits, energies, marker=marker, linewidth=2.5, markersize=8,
                label=fw, color=color, alpha=0.8)
+        plotted_frameworks_final.append(fw)
+    if len(plotted_frameworks_final) != len(frameworks):
+        print(f"  WARNING: Only plotted {len(plotted_frameworks_final)}/{len(frameworks)} frameworks in final energy plot")
     ax.set_xlabel('Number of Qubits', fontweight='bold')
     ax.set_ylabel('Final Energy', fontweight='bold')
     ax.set_title('Final Energy vs Qubits', fontweight='bold')
@@ -175,13 +245,17 @@ def plot_energy_evolution(results: List[Dict], output_dir: Path):
     
     # Plot 3: Energy Change
     ax = axes[2]
-    for fw, fw_results in frameworks.items():
+    plotted_frameworks_change = []
+    for fw, fw_results in sorted(frameworks.items()):  # Sort for consistent ordering
         qubits = [r['qubits'] for r in fw_results]
         energy_changes = [r['energy_change'] for r in fw_results]
         color = FRAMEWORK_COLORS.get(fw, '#666666')
         marker = FRAMEWORK_MARKERS.get(fw, 'o')
         ax.plot(qubits, energy_changes, marker=marker, linewidth=2.5, markersize=8,
                label=fw, color=color, alpha=0.8)
+        plotted_frameworks_change.append(fw)
+    if len(plotted_frameworks_change) != len(frameworks):
+        print(f"  WARNING: Only plotted {len(plotted_frameworks_change)}/{len(frameworks)} frameworks in energy change plot")
     ax.set_xlabel('Number of Qubits', fontweight='bold')
     ax.set_ylabel('Energy Change', fontweight='bold')
     ax.set_title('Energy Change vs Qubits', fontweight='bold')
@@ -190,7 +264,7 @@ def plot_energy_evolution(results: List[Dict], output_dir: Path):
     ax.legend(loc='best', framealpha=0.95, fontsize=9)
     ax.set_xticks(all_qubits)
     
-    plt.suptitle('XYZ Heisenberg Model: Energy Evolution', fontweight='bold', fontsize=16, y=1.02)
+    plt.suptitle('XYZ Heisenberg Model: Energy Evolution (Non-Conserved Energy)', fontweight='bold', fontsize=16, y=1.02)
     plt.tight_layout()
     output_path = output_dir / 'xyz_heisenberg_energy_evolution.png'
     plt.savefig(output_path)
@@ -198,125 +272,55 @@ def plot_energy_evolution(results: List[Dict], output_dir: Path):
     plt.close()
 
 
-def plot_scaling_analysis(results: List[Dict], output_dir: Path):
-    """Plot scaling analysis showing exponential growth in runtime."""
+def plot_memory_usage(results: List[Dict], output_dir: Path):
+    """Plot memory usage vs number of qubits for all frameworks."""
     if not results:
-        print("No results provided to plot_scaling_analysis.")
+        print("No results provided to plot_memory_usage.")
         return
 
     all_qubits = sorted({r['qubits'] for r in results})
+
     # Group results by framework
     frameworks = {}
     for r in results:
         fw = r['framework']
-        if fw not in frameworks:
-            frameworks[fw] = []
-        frameworks[fw].append(r)
+        # Check if memory_usage_mb exists in the result
+        if 'memory_usage_mb' in r or 'memory_mb' in r:
+            if fw not in frameworks:
+                frameworks[fw] = []
+            frameworks[fw].append(r)
+    
+    if not frameworks:
+        print("Warning: No memory usage data found in results. Skipping memory plot.")
+        return
     
     # Sort by qubit count for each framework
     for fw in frameworks:
         frameworks[fw].sort(key=lambda x: x['qubits'])
     
-    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
-    
-    # Plot 1: Runtime on linear scale
-    ax = axes[0]
-    for fw, fw_results in frameworks.items():
-        qubits = [r['qubits'] for r in fw_results]
-        runtimes = [r['runtime_ms'] for r in fw_results]
-        color = FRAMEWORK_COLORS.get(fw, '#666666')
-        marker = FRAMEWORK_MARKERS.get(fw, 'o')
-        ax.plot(qubits, runtimes, marker=marker, linewidth=2.5, markersize=10,
-               label=fw, color=color, alpha=0.8)
-    ax.set_xlabel('Number of Qubits', fontweight='bold')
-    ax.set_ylabel('Runtime (ms)', fontweight='bold')
-    ax.set_title('Runtime Scaling (Linear Scale)', fontweight='bold')
-    ax.grid(True, alpha=0.3, linestyle='--')
-    ax.legend(loc='best', framealpha=0.95)
-    ax.set_xticks(all_qubits)
-    
-    # Plot 2: Runtime on log scale with theoretical exponential
-    ax = axes[1]
-    for fw, fw_results in frameworks.items():
-        qubits = np.array([r['qubits'] for r in fw_results])
-        runtimes = np.array([r['runtime_ms'] for r in fw_results])
-        color = FRAMEWORK_COLORS.get(fw, '#666666')
-        marker = FRAMEWORK_MARKERS.get(fw, 'o')
-        ax.plot(qubits, runtimes, marker=marker, linewidth=2.5, markersize=10,
-               label=fw, color=color, alpha=0.8)
-        
-        # Fit exponential: runtime = a * 2^(b * qubits)
-        if len(qubits) >= 3:
-            # Use log-linear fit: log(runtime) = log(a) + b * qubits
-            log_runtimes = np.log(runtimes + 1e-10)  # Add small value to avoid log(0)
-            coeffs = np.polyfit(qubits, log_runtimes, 1)
-            fit_runtimes = np.exp(coeffs[0] * qubits + coeffs[1])
-            ax.plot(qubits, fit_runtimes, '--', color=color, alpha=0.5, linewidth=1.5,
-                   label='_nolegend_')
-    
-    # Theoretical exponential reference: 2^n scaling
-    if results:
-        qubits_ref = np.array(all_qubits)
-        first_qubit = qubits_ref[0]
-        first_runtime = min([r['runtime_ms'] for r in results if r['qubits'] == int(first_qubit)])
-        theoretical = first_runtime * (2.0 ** (qubits_ref - first_qubit))
-        ax.plot(qubits_ref, theoretical, 'k--', linewidth=2, alpha=0.6,
-               label='Theoretical 2^n scaling', linestyle=':')
-    
-    ax.set_xlabel('Number of Qubits', fontweight='bold')
-    ax.set_ylabel('Runtime (ms)', fontweight='bold')
-    ax.set_title('Runtime Scaling (Log Scale)', fontweight='bold')
-    ax.set_yscale('log')
-    ax.grid(True, alpha=0.3, linestyle='--', which='both')
-    ax.legend(loc='best', framealpha=0.95, fontsize=9)
-    ax.set_xticks(all_qubits)
-    
-    plt.suptitle('XYZ Heisenberg Model: Scaling Analysis', fontweight='bold', fontsize=16, y=1.02)
-    plt.tight_layout()
-    output_path = output_dir / 'xyz_heisenberg_scaling_analysis.png'
-    plt.savefig(output_path)
-    print(f"Saved scaling analysis plot to: {output_path}")
-    plt.close()
-
-
-def plot_operations_comparison(results: List[Dict], output_dir: Path):
-    """Plot number of operations vs qubits."""
-    if not results:
-        print("No results provided to plot_operations_comparison.")
-        return
-
-    all_qubits = sorted({r['qubits'] for r in results})
-    # Group results by framework
-    frameworks = {}
-    for r in results:
-        fw = r['framework']
-        if fw not in frameworks:
-            frameworks[fw] = []
-        frameworks[fw].append(r)
-    
-    # Sort by qubit count for each framework
-    for fw in frameworks:
-        frameworks[fw].sort(key=lambda x: x['qubits'])
+    print(f"  Plotting memory usage for {len(frameworks)} frameworks: {sorted(frameworks.keys())}")
     
     plt.figure(figsize=(10, 6))
     for fw, fw_results in frameworks.items():
         qubits = [r['qubits'] for r in fw_results]
-        operations = [r['num_operations'] for r in fw_results]
+        # Try both possible field names, ensure minimum value for log scale
+        memory = [max(r.get('memory_usage_mb', r.get('memory_mb', 0.0)), 0.01) for r in fw_results]
         color = FRAMEWORK_COLORS.get(fw, '#666666')
         marker = FRAMEWORK_MARKERS.get(fw, 'o')
-        plt.plot(qubits, operations, marker=marker, linewidth=2.5, markersize=10,
+        plt.plot(qubits, memory, marker=marker, linewidth=2.5, markersize=10,
                 label=fw, color=color, alpha=0.8)
     
     plt.xlabel('Number of Qubits', fontweight='bold')
-    plt.ylabel('Number of Operations', fontweight='bold')
-    plt.title('XYZ Heisenberg Model: Circuit Operations vs Number of Qubits', fontweight='bold', fontsize=14)
-    plt.grid(True, alpha=0.3, linestyle='--')
+    plt.ylabel('Memory Usage (MB)', fontweight='bold')
+    plt.title('XYZ Heisenberg Model: Memory Usage vs Number of Qubits (Non-Conserved Energy)', fontweight='bold', fontsize=14)
+    plt.yscale('log')
+    plt.grid(True, alpha=0.3, linestyle='--', which='both')
     plt.legend(loc='best', framealpha=0.95)
     plt.xticks(all_qubits)
     plt.tight_layout()
-    output_path = output_dir / 'xyz_heisenberg_operations_comparison.png'
+    output_path = output_dir / 'xyz_heisenberg_memory_usage.png'
     plt.savefig(output_path)
-    print(f"Saved operations comparison plot to: {output_path}")
+    print(f"Saved memory usage plot to: {output_path}")
     plt.close()
 
 
@@ -341,19 +345,22 @@ def main():
     for r in results:
         fw = r['framework']
         if fw not in frameworks_seen:
-            print(f"  - {fw}: {r['qubits']} qubits, runtime={r['runtime_ms']:.2f} ms")
+            mem = r.get('memory_usage_mb', r.get('memory_mb', 'N/A'))
+            energy_change = r.get('energy_change', 'N/A')
+            print(f"  - {fw}: {r['qubits']} qubits, runtime={r['runtime_ms']:.2f} ms, memory={mem} MB, energy_change={energy_change}")
             frameworks_seen.add(fw)
 
-    print("\nGenerating comparison plots...")
+    print("\nGenerating comparison plots (non-conserved energy case)...")
     
-    # Generate all plots
-    plot_runtime_comparison(results, output_dir)
-    plot_energy_evolution(results, output_dir)
-    plot_scaling_analysis(results, output_dir)
+    # Generate only the requested plots for non-conserved energy case
+    plot_runtime_scaling_log(results, output_dir)
     plot_operations_comparison(results, output_dir)
+    plot_memory_usage(results, output_dir)
+    plot_energy_evolution(results, output_dir)
 
     print("\n✓ All XYZ Heisenberg comparison plots generated successfully!")
     print(f"Plots saved to: {output_dir}")
+    print("\nNote: All plots show results for time-dependent Hamiltonian (non-conserved energy case)")
 
 
 if __name__ == "__main__":
