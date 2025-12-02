@@ -3,6 +3,7 @@ FROM ubuntu:22.04 as base
 
 # Install system dependencies (excluding julia)
 # Include essential devcontainer tools: sudo, procps, less, vim, etc.
+# Add fontconfig for Rust builds and .NET SDK dependencies
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     curl \
     wget \
@@ -16,6 +17,8 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     npm \
     pkg-config \
     libssl-dev \
+    libfontconfig1-dev \
+    fontconfig \
     htop \
     time \
     valgrind \
@@ -53,15 +56,31 @@ COPY . .
 RUN python3 -m pip install --upgrade pip && \
     (pip3 install -r requirements.txt || pip3 install pennylane qiskit matplotlib pandas numpy psutil scipy)
 
-# Install Julia dependencies
-# Note: CSV and DataFrames are optional (not actively used in current code)
-RUN julia -e 'using Pkg; Pkg.add(["Yao", "BenchmarkTools", "JSON", "Zygote"])'
+# Install Julia dependencies in the project directory
+# This ensures packages are available when using --project=/app/yao.jl
+RUN if [ -f "yao.jl/Project.toml" ]; then \
+        julia --project=yao.jl -e 'using Pkg; Pkg.instantiate(); Pkg.precompile()' || \
+        julia --project=yao.jl -e 'using Pkg; Pkg.add(["Yao", "BenchmarkTools", "JSON", "Zygote"]); Pkg.instantiate(); Pkg.precompile()'; \
+    else \
+        julia -e 'using Pkg; Pkg.add(["Yao", "BenchmarkTools", "JSON", "Zygote"])'; \
+    fi
 
 # Install Node.js dependencies for visualization (if summary directory exists)
 RUN if [ -f "summary/package.json" ]; then cd summary && npm install || true; fi
 
 # Build Rust components (LogosQ)
+# Fontconfig should now be available from system packages
 RUN cd logosq && cargo build --release || echo "Warning: Rust build may have failed, but continuing..."
+
+# Install .NET SDK (optional, for Q# benchmarks)
+# This matches the deployment environment setup
+# Continue even if installation fails (it's optional)
+RUN (wget https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb && \
+     dpkg -i packages-microsoft-prod.deb && \
+     rm packages-microsoft-prod.deb && \
+     apt-get update && \
+     DEBIAN_FRONTEND=noninteractive apt-get install -y dotnet-sdk-6.0 && \
+     rm -rf /var/lib/apt/lists/*) || echo "Warning: .NET SDK installation failed, but continuing (Q# benchmarks will be skipped)"
 
 # Expose port for web visualization
 EXPOSE 8080
