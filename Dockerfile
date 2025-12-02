@@ -58,11 +58,12 @@ RUN python3 -m pip install --upgrade pip && \
 
 # Install Julia dependencies in the project directory
 # This ensures packages are available when using --project=/app/yao.jl
+# Ensure all dependencies including transitive ones are properly installed
 RUN if [ -f "yao.jl/Project.toml" ]; then \
-        julia --project=yao.jl -e 'using Pkg; Pkg.instantiate(); Pkg.precompile()' || \
-        julia --project=yao.jl -e 'using Pkg; Pkg.add(["Yao", "BenchmarkTools", "JSON", "Zygote"]); Pkg.instantiate(); Pkg.precompile()'; \
+        julia --project=yao.jl -e 'using Pkg; Pkg.resolve(); Pkg.instantiate(); Pkg.precompile()' || \
+        julia --project=yao.jl -e 'using Pkg; Pkg.add(["Yao", "BenchmarkTools", "JSON", "Zygote", "YaoBlocks", "YaoArrayRegister"]); Pkg.resolve(); Pkg.instantiate(); Pkg.precompile()'; \
     else \
-        julia -e 'using Pkg; Pkg.add(["Yao", "BenchmarkTools", "JSON", "Zygote"])'; \
+        julia -e 'using Pkg; Pkg.add(["Yao", "BenchmarkTools", "JSON", "Zygote", "YaoBlocks", "YaoArrayRegister"])'; \
     fi
 
 # Install Node.js dependencies for visualization (if summary directory exists)
@@ -74,13 +75,21 @@ RUN cd logosq && cargo build --release || echo "Warning: Rust build may have fai
 
 # Install .NET SDK (optional, for Q# benchmarks)
 # This matches the deployment environment setup
-# Continue even if installation fails (it's optional)
+# Ensure complete installation including runtime components (fxr, runtime, etc.)
+# Note: We need to install without --no-install-recommends to get all runtime components
 RUN (wget https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb && \
      dpkg -i packages-microsoft-prod.deb && \
      rm packages-microsoft-prod.deb && \
      apt-get update && \
      DEBIAN_FRONTEND=noninteractive apt-get install -y dotnet-sdk-6.0 && \
-     rm -rf /var/lib/apt/lists/*) || echo "Warning: .NET SDK installation failed, but continuing (Q# benchmarks will be skipped)"
+     rm -rf /var/lib/apt/lists/* && \
+     # Verify installation - check version
+     dotnet --version > /dev/null 2>&1 && \
+     # Verify runtime info is available
+     dotnet --info > /dev/null 2>&1 && \
+     # Verify hostfxr exists (critical for running .NET apps)
+     (test -d /usr/share/dotnet/host/fxr || test -d /usr/lib/dotnet/host/fxr || find /usr -name "hostfxr.so" 2>/dev/null | head -1 | grep -q .) && \
+     echo ".NET SDK installed successfully with all runtime components") || echo "Warning: .NET SDK installation failed, but continuing (Q# benchmarks will be skipped)"
 
 # Expose port for web visualization
 EXPOSE 8080

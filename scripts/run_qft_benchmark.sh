@@ -145,7 +145,9 @@ if command -v julia &> /dev/null; then
     echo "Installing/updating Julia dependencies..."
     julia --project=/app/yao.jl -e '
         using Pkg
-        # First instantiate to get existing dependencies
+        # First resolve to ensure manifest is in sync
+        Pkg.resolve()
+        # Instantiate to get all dependencies including transitive ones
         Pkg.instantiate()
         # Add missing packages if needed
         deps = Pkg.project().dependencies
@@ -155,10 +157,35 @@ if command -v julia &> /dev/null; then
         if !haskey(deps, "JSON")
             Pkg.add("JSON")
         end
-        # Resolve to update manifest
+        # Resolve again to update manifest with any new packages
         Pkg.resolve()
         # Instantiate again to ensure everything is installed
         Pkg.instantiate()
+        # Verify that Yao and its dependencies are available
+        # Check if required packages are in the project dependencies
+        deps = Pkg.project().dependencies
+        required_pkgs = ["YaoBlocks", "YaoArrayRegister"]
+        for pkg in required_pkgs
+            if !haskey(deps, pkg)
+                println("Adding $pkg as explicit dependency...")
+                try
+                    Pkg.add(pkg)
+                catch e
+                    println("Warning: Could not add $pkg: ", e)
+                end
+            end
+        end
+        # Resolve and instantiate again after adding packages
+        Pkg.resolve()
+        Pkg.instantiate()
+        # Verify packages can be loaded
+        try
+            using YaoBlocks
+            using YaoArrayRegister
+            println("YaoBlocks and YaoArrayRegister loaded successfully")
+        catch e
+            println("Warning: Could not load required packages: ", e)
+        end
         # Force precompilation
         try
             Pkg.precompile()
@@ -176,21 +203,47 @@ if command -v julia &> /dev/null; then
         Pkg.instantiate()
         try
             # Work around circular dependency by loading in correct order
+            # First ensure YaoBlocks is available (it should be a transitive dependency)
             using YaoBlocks
+            println("YaoBlocks loaded successfully")
+            # Then try YaoPlots
             using YaoPlots
+            println("YaoPlots loaded successfully")
+            # Finally load Yao
             using Yao
             println("Yao loaded successfully")
         catch e
             println("Yao loading error: ", e)
-            # Try to rebuild after ensuring manifest is synced
+            # Try to ensure all dependencies are installed
             Pkg.resolve()
             Pkg.instantiate()
-            Pkg.build("Yao")
+            # Try rebuilding problematic packages
+            try
+                Pkg.build("YaoBlocks")
+            catch
+            end
+            try
+                Pkg.build("Yao")
+            catch
+            end
             # Try again with explicit order
-            using YaoBlocks
-            using YaoPlots
-            using Yao
-            println("Yao rebuilt and loaded successfully")
+            try
+                using YaoBlocks
+                using YaoPlots
+                using Yao
+                println("Yao rebuilt and loaded successfully")
+            catch e2
+                println("Failed to load after rebuild: ", e2)
+                # Last resort: try loading without YaoPlots first
+                try
+                    using YaoBlocks
+                    using YaoArrayRegister
+                    using Yao
+                    println("Yao loaded successfully (without YaoPlots preload)")
+                catch e3
+                    println("Final load attempt failed: ", e3)
+                end
+            end
         end
     ' >> /tmp/yao_deps.log 2>&1 || true
     
@@ -234,18 +287,51 @@ echo "5/5 Running Q# (.NET) QFT Benchmark..."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 if command -v dotnet &> /dev/null; then
-    QSHARP_PROJECT="${REPO_ROOT}/qsharp/QuantumFourierTransform/QFT.csproj"
-    
-    # Build first to separate build time from run time
-    dotnet build -c Release "$QSHARP_PROJECT" > /dev/null
-    
-    if QFT_OUTPUT_DIR="${RESULTS_DIR}" dotnet run --project "$QSHARP_PROJECT" --configuration Release -- 1 12 > /tmp/qsharp_qft_benchmark.log 2>&1; then
-        print_status "SUCCESS" "Q# benchmark completed"
-        SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
-        # Result file is already written to RESULTS_DIR by the C# program
+    # Verify .NET installation is complete and functional
+    if ! dotnet --version > /dev/null 2>&1; then
+        print_status "SKIP" ".NET SDK found but not working properly (check installation)"
+    elif ! dotnet --info > /dev/null 2>&1; then
+        print_status "SKIP" ".NET SDK found but runtime info unavailable (check installation)"
     else
-        print_status "FAIL" "Q# benchmark failed (check /tmp/qsharp_qft_benchmark.log)"
-        cat /tmp/qsharp_qft_benchmark.log | tail -20
+        QSHARP_PROJECT="${REPO_ROOT}/qsharp/QuantumFourierTransform/QFT.csproj"
+        
+        # Verify project file exists
+        if [ ! -f "$QSHARP_PROJECT" ]; then
+            print_status "FAIL" "Q# project file not found: $QSHARP_PROJECT"
+        else
+            # Restore dependencies first
+            echo "Restoring Q# project dependencies..."
+            if ! dotnet restore "$QSHARP_PROJECT" > /tmp/qsharp_restore.log 2>&1; then
+                print_status "FAIL" "Q# restore failed (check /tmp/qsharp_restore.log)"
+                cat /tmp/qsharp_restore.log | tail -20
+            else
+                # Build first to separate build time from run time
+                echo "Building Q# project..."
+                if ! dotnet build -c Release "$QSHARP_PROJECT" > /tmp/qsharp_build.log 2>&1; then
+                    print_status "FAIL" "Q# build failed (check /tmp/qsharp_build.log)"
+                    cat /tmp/qsharp_build.log | tail -20
+                else
+                    # Run the benchmark
+                    echo "Running Q# benchmark..."
+                    if QFT_OUTPUT_DIR="${RESULTS_DIR}" dotnet run --project "$QSHARP_PROJECT" --configuration Release -- 1 12 > /tmp/qsharp_qft_benchmark.log 2>&1; then
+                        print_status "SUCCESS" "Q# benchmark completed"
+                        SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
+                        # Verify result file was created
+                        if [ -f "${RESULTS_DIR}/qsharp_qft_benchmark_results.json" ]; then
+                            echo "  Result file: ${RESULTS_DIR}/qsharp_qft_benchmark_results.json"
+                        fi
+                    else
+                        print_status "FAIL" "Q# benchmark failed (check /tmp/qsharp_qft_benchmark.log)"
+                        cat /tmp/qsharp_qft_benchmark.log | tail -20
+                        # Check for specific fxr error
+                        if grep -q "fxr" /tmp/qsharp_qft_benchmark.log; then
+                            echo "  Error: .NET runtime host (fxr) is missing. This indicates an incomplete .NET installation."
+                            echo "  Try rebuilding the Docker image to ensure complete .NET SDK installation."
+                        fi
+                    fi
+                fi
+            fi
+        fi
     fi
 else
     print_status "SKIP" "Dotnet not available, skipping Q# benchmark"
