@@ -1,36 +1,55 @@
 {
-  "name": "LogosQ Benchmarks",
-  "image": "logosqbenchmarks:latest",
-  "workspaceFolder": "/app",
-  "workspaceMount": "source=${localWorkspaceFolder},target=/app,type=bind,consistency=cached",
-  "forwardPorts": [8080],
-  "customizations": {
-    "vscode": {
-      "extensions": [
-        "ms-python.python",
-        "ms-python.vscode-pylance",
-        "julialang.language-julia",
-        "rust-lang.rust-analyzer",
-        "ms-vscode.cpptools",
-        "ms-vscode.cmake-tools",
-        "dbaeumer.vscode-eslint",
-        "esbenp.prettier-vscode",
-        "ms-azuretools.vscode-docker"
-      ],
-      "settings": {
-        "python.defaultInterpreterPath": "/usr/bin/python3",
-        "python.linting.enabled": true,
-        "python.linting.pylintEnabled": true,
-        "rust-analyzer.checkOnSave.command": "clippy",
-        "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
-        "terminal.integrated.defaultProfile.linux": "bash"
-      }
-    }
-  },
-  "runArgs": ["--init"],
-  "remoteUser": "root",
-  "containerEnv": {
-    "RUST_LOG": "info"
-  },
-  "postCreateCommand": "mkdir -p results logs"
+	"name": "LogosQ Benchmarks",
+	"dockerComposeFile": "../docker-compose.yml",
+	"service": "benchmark",
+	"workspaceFolder": "/app",
+	
+	// Features to add to the dev container
+	"features": {
+		"ghcr.io/devcontainers/features/git:1": {},
+		"ghcr.io/devcontainers/features/github-cli:1": {}
+	},
+
+	// VS Code extensions to install
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"rust-lang.rust-analyzer",
+				"ms-python.python",
+				"julialang.language-julia",
+				"ms-dotnettools.csharp",
+				"ms-python.vscode-pylance",
+				"eamodio.gitlens",
+				"ms-vscode.vscode-json"
+			],
+			"settings": {
+				"python.defaultInterpreterPath": "/usr/bin/python3",
+				"python.linting.enabled": true,
+				"python.linting.pylintEnabled": false,
+				"rust-analyzer.checkOnSave.command": "clippy",
+				"files.exclude": {
+					"**/target": true,
+					"**/__pycache__": true,
+					"**/.git": false
+				}
+			}
+		}
+	},
+
+	// Forward ports
+	"forwardPorts": [8080],
+
+	// Post-create command to run after container creation
+	"postCreateCommand": "echo 'LogosQ Benchmark Environment Ready!' && echo 'Available benchmarks:' && echo '  - bash scripts/run_vqa_parameter_sweep.sh' && echo '  - bash scripts/run_xyz_heisenberg_benchmark.sh' && echo '  - bash scripts/run_qft_benchmark.sh' && echo '  - bash scripts/run_gradient_tests.sh'",
+
+	// Use 'forwardPorts' to make ports available locally
+	"portsAttributes": {
+		"8080": {
+			"label": "Visualization Server",
+			"onAutoForward": "notify"
+		}
+	},
+
+	// Remote user
+	"remoteUser": "root"
 }

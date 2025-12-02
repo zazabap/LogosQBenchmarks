@@ -4,124 +4,90 @@ A comprehensive benchmarking suite for comparing quantum computing libraries inc
 
 ## Features
 
-- **Multi-Library Support**: Benchmarks LogosQ, Yao.jl, PennyLane, and Qiskit.
-- **Comprehensive Metrics**: Execution time, energy accuracy (VQE), and resource usage.
-- **Multiple Benchmark Types**:
-    - **GHZ States**: Entanglement generation performance.
-    - **Random Circuits**: General circuit simulation capabilities.
-    - **Quantum Fourier Transform (QFT)**: O(n²) algorithm scaling.
-    - **Variational Quantum Eigensolver (VQE)**: Hybrid quantum-classical optimization for H₂ chemistry, including parameter sweeps.
-    - **Gradient Differentiation**: Verification of automatic differentiation correctness and memory safety.
-- **Reproducibility**: Standardized seeds, optimizers, and circuit structures for fair comparison.
-- **Visualization**: Python-based plotting scripts for generating publication-quality figures.
-
-## Use Cases
-
-This benchmarking suite is designed for researchers, developers, and educators who need to:
-
-1. **Compare Framework Performance**: Objectively evaluate which library (LogosQ, Qiskit, PennyLane, Yao.jl) performs best for specific quantum tasks like state preparation, VQE, or QFT.
-2. **Resource Planning**: Estimate memory and CPU requirements for simulating quantum circuits of varying sizes.
-3. **Algorithm Optimization**: Analyze runtime scaling and memory overhead to optimize quantum algorithms before deployment.
-4. **Simulator Selection**: Choose the appropriate simulation backend based on circuit depth and qubit count.
-5. **Educational Analysis**: Visualize and demonstrate the computational complexity differences between various quantum simulation approaches.
+- **Multi-Library Support**: Benchmarks LogosQ, Yao.jl, PennyLane, and Qiskit
+- **Comprehensive Metrics**: Execution time, energy accuracy (VQE), and resource usage
+- **Multiple Benchmark Types**: GHZ States, Random Circuits, QFT, VQE, Gradient Differentiation
+- **Reproducibility**: Standardized seeds, optimizers, and circuit structures
+- **Visualization**: Python-based plotting scripts for publication-quality figures
 
 ## Quick Start
 
-### Prerequisites
+### Option 1: VS Code Dev Containers (Recommended)
 
-- **Rust**: Latest stable toolchain
-- **Julia**: 1.6+ (with `Yao`, `BenchmarkTools`, `JSON`)
-- **Python**: 3.8+ (with `pennylane`, `qiskit`, `matplotlib`, `numpy`, `scipy`, `psutil`)
-
-### Running Benchmarks
-
-The `scripts/` directory contains shell scripts to orchestrate benchmarks for different algorithms.
-
-1. **VQE Parameter Sweep (H₂)**:
-   Runs VQE optimization across LogosQ, Qiskit, PennyLane, and Yao.jl with varying ansatz depths (12-28 parameters).
+1. Clone and open in VS Code:
    ```bash
-   # Run the benchmark sweep
-   bash scripts/run_vqa_parameter_sweep.sh
-   
-   # Generate analysis plots
-   python3 scripts/plot_vqa_benchmark.py
+   git clone <YOUR_GITHUB_REPO_URL>
+   cd LogosQBenchmarks
+   code .
    ```
-   *Output*: JSON results and plots in `test_results/vqa_parameter_sweep/`
 
-2. **Quantum Fourier Transform (QFT)**:
-   Benchmarks QFT execution time and memory usage. Automatically generates comparison plots.
+2. Click "Reopen in Container" when prompted (or `F1` → "Dev Containers: Reopen in Container")
+
+3. Wait for setup (15-30 min first time), then run benchmarks:
    ```bash
+   bash scripts/run_vqa_parameter_sweep.sh
+   bash scripts/run_xyz_heisenberg_benchmark.sh
    bash scripts/run_qft_benchmark.sh
    ```
-   *Output*: JSON results and comparison plots in `test_results/qft/`
 
-3. **Gradient Calculation Tests**:
-   Verifies the correctness of gradient calculations across frameworks.
-   ```bash
-   bash scripts/run_gradient_tests.sh
-   ```
-   *Output*: Test logs in `test_results/gradient/`
+### Option 2: Docker
+
+```bash
+git clone <YOUR_GITHUB_REPO_URL>
+cd LogosQBenchmarks
+docker-compose build
+docker-compose run --rm benchmark bash scripts/run_vqa_parameter_sweep.sh
+```
+
+**For detailed setup instructions, see [DEPLOYMENT.md](DEPLOYMENT.md)**
+
+## Prerequisites
+
+- **Rust**: Latest stable (logosq 0.2.3)
+- **Julia**: 1.8.5 (Yao, BenchmarkTools, JSON, Zygote)
+- **Python**: 3.8+ (see `requirements.txt`)
+- **.NET SDK**: 6.0+ (optional, for Q# benchmarks)
+
+**Complete dependency list: [REQUIREMENTS.md](REQUIREMENTS.md)**
+
+## Available Benchmarks
+
+| Benchmark | Script | Output |
+|-----------|--------|--------|
+| VQE Parameter Sweep | `scripts/run_vqa_parameter_sweep.sh` | `test_results/vqa_parameter_sweep/` |
+| XYZ Heisenberg Model | `scripts/run_xyz_heisenberg_benchmark.sh` | `test_results/xyz_heisenberg/` |
+| Quantum Fourier Transform | `scripts/run_qft_benchmark.sh` | `test_results/qft/` |
+| Gradient Tests | `scripts/run_gradient_tests.sh` | `test_results/gradient/` |
 
 ## Project Structure
 
 ```
 LogosQBenchmarks/
-├── logosq/                     # LogosQ (Rust) implementation
-│   ├── src/                    # Source code
-│   ├── VQA/                    # VQE benchmark implementation
-│   ├── QuantumFourierTransform/# QFT benchmark implementation
-│   └── MemoryCircuitDifferentiation/ # Gradient correctness tests
-├── qiskit/                     # Qiskit (Python) benchmarks
-│   ├── VQA/                    # VQE implementation
-│   ├── QuantumFourierTransform/# QFT benchmark implementation
-│   └── MemoryDifferentiation/  # Gradient correctness tests
-├── pennylane/                  # PennyLane (Python) benchmarks
-│   ├── VQA/                    # VQE implementation
-│   ├── QuantumFourierTransform/# QFT benchmark implementation
-│   └── MemoryCicuitDifferentiation/ # Gradient correctness tests
-├── yao.jl/                     # Yao.jl (Julia) benchmarks
-│   ├── VQA/                    # VQE implementation
-│   ├── QuantumFourierTransform/# QFT benchmark implementation
-│   └── MemoryCircuitDifferentiation/ # Gradient correctness tests
-├── scripts/                    # Orchestration and plotting scripts
-│   ├── run_vqa_parameter_sweep.sh
-│   ├── plot_vqa_benchmark.py
-│   ├── run_qft_benchmark.sh
-│   ├── plot_qft_comparison.py
-│   └── run_gradient_tests.sh
-├── test_results/               # Generated benchmark results and plots
-│   ├── vqa_parameter_sweep/
-│   ├── qft/
-│   └── gradient/
-└── summary/                    # Visualization dashboard (web-based)
+├── logosq/          # LogosQ (Rust) benchmarks
+├── qiskit/          # Qiskit (Python) benchmarks
+├── pennylane/       # PennyLane (Python) benchmarks
+├── yao.jl/          # Yao.jl (Julia) benchmarks
+├── qsharp/          # Q# benchmarks
+├── scripts/         # Orchestration and plotting scripts
+└── test_results/    # Generated results and plots
 ```
 
 ## Benchmark Details
 
 ### Variational Quantum Eigensolver (VQE)
-Benchmarks hybrid quantum-classical optimization finding the ground state energy of the H₂ molecule (STO-3G basis).
-- **Hamiltonian**: H₂ at 0.735 Å (mapped via Jordan-Wigner).
-- **Ansatz**: Hardware-efficient (Ry rotations + linear CNOT entanglement).
-- **Optimizer**: Adam (lr=0.01, tol=1e-7).
-- **Metrics**: Exact energy error, number of iterations, total runtime.
+Ground state energy optimization for H₂ molecule (STO-3G basis). Hardware-efficient ansatz with Adam optimizer.
 
 ### Quantum Fourier Transform (QFT)
-Benchmarks the quantum algorithm with O(n²) complexity, testing simulation speed and memory management for increasing qubit counts.
+O(n²) algorithm scaling test for simulation speed and memory management.
 
-### Gradient Calculation & Differentiation
-Validates the correctness of gradient computations for parameterized quantum circuits. Tests for specific issues such as:
-- Memory safety during differentiation (preventing segfaults/leaks).
-- Correct handling of complex coefficients.
-- Generator validity and operation broadcasting.
-- Numerical stability (NaN detection).
+### Gradient Differentiation
+Validates automatic differentiation correctness and memory safety across frameworks.
 
 ## License
 
-MIT License - see LICENSE file for details.
+MIT License
 
 ## Citation
-
-If you use this benchmarking suite in your research, please cite:
 
 ```bibtex
 @software{logosq_benchmarks,
