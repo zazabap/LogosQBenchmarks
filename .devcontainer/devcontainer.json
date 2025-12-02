@@ -3,6 +3,7 @@
 	"dockerComposeFile": "../docker-compose.yml",
 	"service": "benchmark",
 	"workspaceFolder": "/app",
+	"shutdownAction": "stopCompose",
 	
 	// Features to add to the dev container
 	"features": {

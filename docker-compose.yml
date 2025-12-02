@@ -1,9 +1,12 @@
-version: '3.8'
-
+# Docker Compose V2 format (compatible with Docker 28.x)
+# Note: 'version' field is optional in Compose V2 but included for compatibility
 services:
   benchmark:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: logosq-benchmark
+    restart: unless-stopped
     ports:
       - "8080:8080"
     volumes:
@@ -13,4 +16,8 @@ services:
     environment:
       - RUST_LOG=info
     # Keep container running for Dev Containers
-    command: sleep infinity
+    # Use array format for better compatibility with Docker 28.x
+    command: ["sleep", "infinity"]
+    # Ensure container runs in foreground for devcontainer
+    stdin_open: true
+    tty: true

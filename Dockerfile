@@ -2,6 +2,7 @@
 FROM ubuntu:22.04 as base
 
 # Install system dependencies (excluding julia)
+# Include essential devcontainer tools: sudo, procps, less, vim, etc.
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     curl \
     wget \
@@ -19,6 +20,14 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     time \
     valgrind \
     libeigen3-dev \
+    sudo \
+    procps \
+    less \
+    vim \
+    nano \
+    ca-certificates \
+    gnupg \
+    lsb-release \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Julia manually
@@ -36,18 +45,20 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 WORKDIR /app
 
 # Copy project files
+# Note: The full directory will be mounted as a volume in docker-compose,
+# but we need these files for the build process during image creation
 COPY . .
 
 # Install Python dependencies
-RUN python3 -m pip install --upgrade pip
-RUN pip3 install -r requirements.txt || pip3 install pennylane qiskit matplotlib pandas numpy psutil scipy
+RUN python3 -m pip install --upgrade pip && \
+    (pip3 install -r requirements.txt || pip3 install pennylane qiskit matplotlib pandas numpy psutil scipy)
 
 # Install Julia dependencies
 # Note: CSV and DataFrames are optional (not actively used in current code)
 RUN julia -e 'using Pkg; Pkg.add(["Yao", "BenchmarkTools", "JSON", "Zygote"])'
 
 # Install Node.js dependencies for visualization (if summary directory exists)
-RUN if [ -d "summary" ]; then cd summary && npm install || true; fi
+RUN if [ -f "summary/package.json" ]; then cd summary && npm install || true; fi
 
 # Build Rust components (LogosQ)
 RUN cd logosq && cargo build --release || echo "Warning: Rust build may have failed, but continuing..."
@@ -55,5 +66,10 @@ RUN cd logosq && cargo build --release || echo "Warning: Rust build may have fai
 # Expose port for web visualization
 EXPOSE 8080
 
-# Default command (run interactive shell if run_benchmarks.sh doesn't exist)
-CMD ["/bin/bash"]
+# Set up environment for devcontainer
+# Ensure PATH is set correctly and container stays alive
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Default command - keep container running for devcontainers
+# docker-compose will override this with 'sleep infinity'
+CMD ["sleep", "infinity"]
