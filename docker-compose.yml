@@ -12,15 +12,5 @@ services:
       - ./logs:/app/logs
     environment:
       - RUST_LOG=info
-    command: >
-      sh -c "
-        echo 'LogosQ Benchmark Suite Container Ready' &&
-        echo 'Available benchmarks:' &&
-        echo '  - bash scripts/run_vqa_parameter_sweep.sh' &&
-        echo '  - bash scripts/run_xyz_heisenberg_benchmark.sh' &&
-        echo '  - bash scripts/run_qft_benchmark.sh' &&
-        echo '  - bash scripts/run_gradient_tests.sh' &&
-        echo '' &&
-        echo 'Starting interactive shell...' &&
-        /bin/bash
-      "
+    # Keep container running for Dev Containers
+    command: sleep infinity
