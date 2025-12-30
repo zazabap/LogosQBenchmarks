@@ -45,8 +45,11 @@ plt.rcParams.update({
     'savefig.dpi': 300,
     'savefig.bbox': 'tight'
 })
+plt.rcParams['savefig.format'] = 'pdf'
 
 fig_size = (16, 7)
+
+VECTOR_FORMAT = "pdf"
 
 RESULTS_DIR = Path("/app/test_results/qft")
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -283,7 +286,7 @@ def plot_execution_time_comparison(
     ax.set_ylabel('Execution Time (ms, log scale)', fontsize=13, fontweight='bold', labelpad=10)
     ax.set_yscale('log')
     ax.legend(loc='lower right', frameon=True, fancybox=True, shadow=True,
-               fontsize=11, framealpha=0.95, edgecolor='gray', facecolor='white')
+               fontsize=13, framealpha=0.95, edgecolor='gray', facecolor='white')
     ax.grid(True, alpha=0.4, linestyle='--', linewidth=0.8, which='both', zorder=0)
     ax.set_facecolor('#FAFAFA')
     ax.spines['bottom'].set_color('#333333')
@@ -291,7 +294,7 @@ def plot_execution_time_comparison(
     ax.tick_params(colors='#333333', width=1.2, length=5)
     
     plt.tight_layout()
-    plt.savefig(log_path, dpi=300, bbox_inches='tight', facecolor='white', edgecolor='none')
+    plt.savefig(log_path, dpi=300, bbox_inches='tight', facecolor='white', edgecolor='none', format=VECTOR_FORMAT)
     plt.close(fig)
     print(f"✓ Saved execution time comparison plot (log scale) to: {log_path}")
 
@@ -351,7 +354,7 @@ def plot_memory_comparison(
     ax.tick_params(colors='#333333', width=1.2, length=6, labelsize=12)
     
     plt.tight_layout()
-    plt.savefig(full_path, dpi=300, bbox_inches='tight', facecolor='white', edgecolor='none')
+    plt.savefig(full_path, dpi=300, bbox_inches='tight', facecolor='white', edgecolor='none', format=VECTOR_FORMAT)
     plt.close(fig)
     print(f"✓ Saved memory usage comparison plot (symlog scale) to: {full_path}")
 
@@ -444,7 +447,7 @@ def plot_speedup_comparison(
     ax.set_xlabel('Number of Qubits', fontsize=13, fontweight='bold', labelpad=10)
     ax.set_ylabel(f'Speedup Ratio (vs {baseline_name}, log scale)', fontsize=13, fontweight='bold', labelpad=10)
     ax.legend(loc='upper center', frameon=True, fancybox=True, shadow=True,
-              fontsize=11, framealpha=0.95, edgecolor='gray', facecolor='white')
+              fontsize=13, framealpha=0.95, edgecolor='gray', facecolor='white')
     ax.grid(True, alpha=0.4, linestyle='--', linewidth=0.8, which='both', zorder=1)
     ax.set_facecolor('#FAFAFA')
     ax.spines['bottom'].set_color('#333333')
@@ -452,7 +455,7 @@ def plot_speedup_comparison(
     ax.tick_params(colors='#333333', width=1.2, length=5)
     
     plt.tight_layout()
-    plt.savefig(output_path, dpi=300, bbox_inches='tight', facecolor='white', edgecolor='none')
+    plt.savefig(output_path, dpi=300, bbox_inches='tight', facecolor='white', edgecolor='none', format=VECTOR_FORMAT)
     print(f"✓ Saved speedup comparison plot to: {output_path}")
 
 def plot_synthesis_result(
@@ -606,7 +609,7 @@ def plot_synthesis_result(
     ax3.set_title('(c) Speedup Comparison', fontsize=14, fontweight='bold', pad=10)
     
     plt.tight_layout()
-    plt.savefig(output_path, dpi=300, bbox_inches='tight', facecolor='white', edgecolor='none')
+    plt.savefig(output_path, dpi=300, bbox_inches='tight', facecolor='white', edgecolor='none', format=VECTOR_FORMAT)
     plt.close(fig)
     print(f"✓ Saved synthesis result plot to: {output_path}")
 
@@ -666,14 +669,14 @@ def main():
     if time_datasets:
         plot_execution_time_comparison(
             time_datasets,
-            str(output_dir / "qft_execution_time_comparison.png")
+            str(output_dir / "qft_execution_time_comparison.pdf")
         )
     
     # Memory usage comparison
     if memory_datasets:
         plot_memory_comparison(
             memory_datasets,
-            str(output_dir / "qft_memory_comparison.png")
+            str(output_dir / "qft_memory_comparison.pdf")
         )
     
     # Speedup comparison (using LogosQ as baseline)
@@ -681,7 +684,7 @@ def main():
         plot_speedup_comparison(
             {k: (q, t) for k, (q, t, _) in time_datasets.items()},
             'logosq',
-            str(output_dir / "qft_speedup_comparison.png")
+            str(output_dir / "qft_speedup_comparison.pdf")
         )
     
     # Synthesis result plot (combining execution time log, memory full, and speedup)
@@ -690,7 +693,7 @@ def main():
             time_datasets,
             memory_datasets,
             'logosq',
-            str(output_dir / "synthesis_result.png")
+            str(output_dir / "synthesis_result.pdf")
         )
     
     print("\n✅ All plots generated successfully!")

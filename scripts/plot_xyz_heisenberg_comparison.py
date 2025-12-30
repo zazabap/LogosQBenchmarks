@@ -43,6 +43,7 @@ plt.rcParams.update({
     'savefig.dpi': 300,
     'savefig.bbox': 'tight'
 })
+plt.rcParams['savefig.format'] = 'pdf'
 
 # Color scheme for frameworks
 FRAMEWORK_COLORS = {
@@ -60,6 +61,8 @@ FRAMEWORK_MARKERS = {
     'Yao.jl (Julia)': 'D',
     'Q# (.NET)': 'X',
 }
+
+VECTOR_FORMAT = "pdf"
 
 RESULTS_DIR = Path("/app/test_results/xyz_heisenberg")
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -130,8 +133,8 @@ def plot_runtime_scaling_log(results: List[Dict], output_dir: Path):
     plt.legend(loc='best', framealpha=0.95, fontsize=9)
     plt.xticks(all_qubits)
     plt.tight_layout()
-    output_path = output_dir / 'xyz_heisenberg_runtime_scaling_log.png'
-    plt.savefig(output_path)
+    output_path = output_dir / 'xyz_heisenberg_runtime_scaling_log.pdf'
+    plt.savefig(output_path, format=VECTOR_FORMAT)
     print(f"Saved runtime scaling (log scale) plot to: {output_path}")
     plt.close()
 
@@ -173,8 +176,8 @@ def plot_operations_comparison(results: List[Dict], output_dir: Path):
     plt.legend(loc='best', framealpha=0.95)
     plt.xticks(all_qubits)
     plt.tight_layout()
-    output_path = output_dir / 'xyz_heisenberg_operations_comparison.png'
-    plt.savefig(output_path)
+    output_path = output_dir / 'xyz_heisenberg_operations_comparison.pdf'
+    plt.savefig(output_path, format=VECTOR_FORMAT)
     print(f"Saved operations comparison plot to: {output_path}")
     plt.close()
 
@@ -266,8 +269,8 @@ def plot_energy_evolution(results: List[Dict], output_dir: Path):
     
     plt.suptitle('XYZ Heisenberg Model: Energy Evolution (Non-Conserved Energy)', fontweight='bold', fontsize=16, y=1.02)
     plt.tight_layout()
-    output_path = output_dir / 'xyz_heisenberg_energy_evolution.png'
-    plt.savefig(output_path)
+    output_path = output_dir / 'xyz_heisenberg_energy_evolution.pdf'
+    plt.savefig(output_path, format=VECTOR_FORMAT)
     print(f"Saved energy evolution plot to: {output_path}")
     plt.close()
 
@@ -318,8 +321,8 @@ def plot_memory_usage(results: List[Dict], output_dir: Path):
     plt.legend(loc='best', framealpha=0.95)
     plt.xticks(all_qubits)
     plt.tight_layout()
-    output_path = output_dir / 'xyz_heisenberg_memory_usage.png'
-    plt.savefig(output_path)
+    output_path = output_dir / 'xyz_heisenberg_memory_usage.pdf'
+    plt.savefig(output_path, format=VECTOR_FORMAT)
     print(f"Saved memory usage plot to: {output_path}")
     plt.close()
 

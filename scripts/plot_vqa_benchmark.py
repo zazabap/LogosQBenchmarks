@@ -43,6 +43,7 @@ plt.rcParams.update({
     'savefig.dpi': 300,
     'savefig.bbox': 'tight'
 })
+plt.rcParams['savefig.format'] = 'pdf'
 
 # Color scheme for frameworks
 FRAMEWORK_COLORS = {
@@ -60,6 +61,8 @@ FRAMEWORK_MARKERS = {
     'Yao.jl (Julia)': 'D',
     'Q# (.NET)': 'X',
 }
+
+VECTOR_FORMAT = "pdf"
 
 RESULTS_DIR = Path("/app/test_results/vqa_parameter_sweep")
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -106,8 +109,8 @@ def plot_parameter_sweep(results: List[Dict], output_dir: Path):
     plt.legend(loc='best', framealpha=0.95)
     plt.xticks(all_params)
     plt.tight_layout()
-    output_path = output_dir / 'vqa_parameter_sweep_error.png'
-    plt.savefig(output_path)
+    output_path = output_dir / 'vqa_parameter_sweep_error.pdf'
+    plt.savefig(output_path, format=VECTOR_FORMAT)
     print(f"Saved energy error plot to: {output_path}")
     plt.close()
     
@@ -128,8 +131,8 @@ def plot_parameter_sweep(results: List[Dict], output_dir: Path):
     plt.legend(loc='best', framealpha=0.95)
     plt.xticks(all_params)
     plt.tight_layout()
-    output_path = output_dir / 'vqa_parameter_sweep_runtime.png'
-    plt.savefig(output_path)
+    output_path = output_dir / 'vqa_parameter_sweep_runtime.pdf'
+    plt.savefig(output_path, format=VECTOR_FORMAT)
     print(f"Saved runtime plot to: {output_path}")
     plt.close()
 
@@ -151,8 +154,8 @@ def plot_parameter_sweep(results: List[Dict], output_dir: Path):
     plt.legend(loc='best', framealpha=0.95)
     plt.xticks(all_params)
     plt.tight_layout()
-    output_path = output_dir / 'vqa_parameter_sweep_runtime_log.png'
-    plt.savefig(output_path)
+    output_path = output_dir / 'vqa_parameter_sweep_runtime_log.pdf'
+    plt.savefig(output_path, format=VECTOR_FORMAT)
     print(f"Saved log-scale runtime plot to: {output_path}")
     plt.close()
     
@@ -173,8 +176,8 @@ def plot_parameter_sweep(results: List[Dict], output_dir: Path):
     plt.legend(loc='best', framealpha=0.95)
     plt.xticks(all_params)
     plt.tight_layout()
-    output_path = output_dir / 'vqa_parameter_sweep_iterations.png'
-    plt.savefig(output_path)
+    output_path = output_dir / 'vqa_parameter_sweep_iterations.pdf'
+    plt.savefig(output_path, format=VECTOR_FORMAT)
     print(f"Saved iterations plot to: {output_path}")
     plt.close()
     
@@ -198,8 +201,8 @@ def plot_parameter_sweep(results: List[Dict], output_dir: Path):
     plt.legend(loc='best', framealpha=0.95)
     plt.xticks(all_params)
     plt.tight_layout()
-    output_path = output_dir / 'vqa_parameter_sweep_energy.png'
-    plt.savefig(output_path)
+    output_path = output_dir / 'vqa_parameter_sweep_energy.pdf'
+    plt.savefig(output_path, format=VECTOR_FORMAT)
     print(f"Saved VQE energy plot to: {output_path}")
     plt.close()
 
